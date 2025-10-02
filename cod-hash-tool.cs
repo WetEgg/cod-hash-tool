@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 public class CODHashTool
@@ -30,6 +31,8 @@ public class CODHashTool
 					115 - VM Weapon Animations (T10)
 
 					116 - WM Weapon Animations (T10)
+
+					1161 - Execution Animations (T10)
 
 					117 - VM Weapon Animations (SAT)
 
@@ -191,21 +194,33 @@ public class CODHashTool
 
 							break;
 						}
-						case "112":
+						case "113":
 						{
 							JUPVMWeaponAnimations();
 
 							break;
 						}
-						case "113":
+						case "115":
 						{
 							T10VMWeaponAnimations();
 
 							break;
 						}
-						case "114":
+						case "116":
 						{
 							T10WMWeaponAnimations();
+
+							break;
+						}
+						case "1161":
+						{
+							T10ExecutionAnimations();
+
+							break;
+						}
+						case "117":
+						{
+							SATVMWeaponAnimations();
 
 							break;
 						}
@@ -250,7 +265,7 @@ public class CODHashTool
 						}
 						case "416":
 						{
-							//SATWeaponMaterials();
+							SATWeaponMaterials();
 
 							break;
 						}
@@ -322,10 +337,28 @@ public class CODHashTool
 
 							break;
 						}
+						case "86":
+						{
+							GenerateSoundbanks();
+
+							break;
+						}
+						case "87":
+						{
+							GenerateAnimpackages();
+
+							break;
+						}
 						//MISCELLANIOUS
 						case "91":
 						{
 							SplitAssetLogs();
+
+							break;
+						}
+						case "98":
+						{
+							Hasher();
 
 							break;
 						}
@@ -688,7 +721,6 @@ public class CODHashTool
 		string[] T10WeaponNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\T10WeaponNames.txt");
 
 		string[] namePrefixes = {"vm_","t10_vm_"};
-		string[] weaponPlatformPrefixes = {"c","j",""};
 
 		if(!File.Exists("GeneratedAnimations.txt"))
 		{
@@ -794,6 +826,113 @@ public class CODHashTool
             GeneratedAnimations.Close();
         }
     }
+
+	static void T10ExecutionAnimations()
+    {
+        Console.WriteLine("Generating T10 Execution Animations:\n");
+
+		string[] T10AnimationAssetLog = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Animations.txt");
+
+		string[] T10ExecutionNames = File.ReadAllLines(@"cod-hash-tool-data\Animations\ExecutionNames.txt");
+		string[] T10ExecutionSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Animations\ExecutionSuffixes.txt");
+		string[] T10ExecutionGenders = {"","_fem"};
+
+        if(!File.Exists("GeneratedAnimations.txt"))
+		{
+			var file = File.Create("GeneratedAnimations.txt");
+			file.Close();
+		}
+
+        foreach (string executionGender in T10ExecutionGenders)
+        {
+            using StreamWriter GeneratedAnimations = new StreamWriter("GeneratedAnimations.txt", true);
+
+            foreach (string executionName in T10ExecutionNames)
+            {
+				foreach (string executionSuffix in T10ExecutionSuffixes)
+                {
+					string stringedName = executionName + executionSuffix + executionGender;
+					string generatedHash = CalcHash64_v1(stringedName);
+
+					if (debugEnabled)
+					{
+						Console.WriteLine(stringedName);
+					}
+
+					Parallel.ForEach(T10AnimationAssetLog, hash =>
+					{
+						if(hash == generatedHash)
+						{
+							string output = generatedHash + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedAnimations.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+                }
+            }
+
+            GeneratedAnimations.Flush();
+            GeneratedAnimations.Close();
+        }
+    }
+
+	static void SATVMWeaponAnimations()
+	{
+		Console.WriteLine("Generating SAT VM Weapon Animations:\n");
+
+		string[] SATAnimationAssetLog = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Animations.txt");
+
+		string[] SATVMAnimationNames = File.ReadAllLines(@"cod-hash-tool-data\Animations\VMAnimationNames.txt");
+		string[] SATWeaponNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\SATWeaponNames.txt");
+
+		string[] namePrefixes = {"vm_","sat_vm_"};
+
+		if(!File.Exists("GeneratedAnimations.txt"))
+		{
+			var file = File.Create("GeneratedAnimations.txt");
+			file.Close();
+		}
+
+		foreach(string weaponName in SATWeaponNames)
+		{
+			using StreamWriter GeneratedAnimations = new StreamWriter("GeneratedAnimations.txt", true);
+
+			Parallel.ForEach(namePrefixes, namePrefix =>
+			{
+				Parallel.ForEach(SATVMAnimationNames, animationName =>
+				{
+					string stringedName = namePrefix + weaponName + "_" + animationName;
+					string generatedHash = CalcHash64_v1(stringedName);
+
+					if(debugEnabled)
+					{
+						Console.WriteLine(stringedName);
+					}
+
+					Parallel.ForEach(SATAnimationAssetLog, hash =>
+					{
+						if(hash == generatedHash)
+						{
+							string output = generatedHash + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedAnimations.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+				});
+			});
+
+			GeneratedAnimations.Flush();
+			GeneratedAnimations.Close();
+		}
+	}
 
 	static void AnimPackages()
     {
@@ -913,20 +1052,20 @@ public class CODHashTool
         string[] ImageAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Images.txt");
 		string[] ImageAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Images.txt");
 		string[] ImageAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Images.txt");
-		//string[] ImageAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Images.txt");
+		string[] ImageAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Images.txt");
 
 		var ImageAssetLog = ImageAssetLogIW9.Union(ImageAssetLogJUP).ToArray();
 		ImageAssetLog = ImageAssetLog.Union(ImageAssetLogT10).ToArray();
-		//ImageAssetLog = ImageAssetLog.Union(ImageAssetLogSAT).ToArray();
+		ImageAssetLog = ImageAssetLog.Union(ImageAssetLogSAT).ToArray();
 
 		string[] MaterialNamesIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\UnhashedMaterials.txt");
 		string[] MaterialNamesJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\UnhashedMaterials.txt");
 		string[] MaterialNamesT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\UnhashedMaterials.txt");
-		//string[] MaterialNamesSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\UnhashedMaterials.txt");
+		string[] MaterialNamesSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\UnhashedMaterials.txt");
 
 		var MaterialNames = MaterialNamesIW9.Union(MaterialNamesJUP).ToArray();
 		MaterialNames = MaterialNames.Union(MaterialNamesT10).ToArray();
-		//MaterialNames = MaterialNames.Union(MaterialNamesSAT).ToArray();
+		MaterialNames = MaterialNames.Union(MaterialNamesSAT).ToArray();
 
 		string[] TextureTypes = File.ReadAllLines(@"cod-hash-tool-data\Images\TextureTypes.txt");
 
@@ -990,7 +1129,7 @@ public class CODHashTool
 		string[] MaterialKeywords = File.ReadAllLines(@"cod-hash-tool-data\Materials\Keywords.txt");
 		string[] IW9Numbers = File.ReadAllLines(@"cod-hash-tool-data\Materials\IW9Numbers.txt");
 
-		if(File.Exists("GeneratedMaterials.txt") != true)
+		if(!File.Exists("GeneratedMaterials.txt"))
 		{
 			var file = File.Create("GeneratedMaterials.txt");
 			file.Close();
@@ -1054,7 +1193,7 @@ public class CODHashTool
 		string[] JUPNumbers = File.ReadAllLines(@"cod-hash-tool-data\Materials\JUPNumbers.txt");
 		string[] weaponPlatformPrefixes = {"c","j",""};
 
-		if(File.Exists("GeneratedMaterials.txt") != true)
+		if(!File.Exists("GeneratedMaterials.txt"))
 		{
 			var file = File.Create("GeneratedMaterials.txt");
 			file.Close();
@@ -1117,7 +1256,7 @@ public class CODHashTool
 		string[] T10BlueprintNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\T10BlueprintNames.txt");
 		string[] weaponMaterialPrefixs = {"mtl_att_t10_","mtl_wpn_t10_"};
 
-		if(File.Exists("GeneratedMaterials.txt") != true)
+		if(!File.Exists("GeneratedMaterials.txt"))
 		{
 			var file = File.Create("GeneratedMaterials.txt");
 			file.Close();
@@ -1166,6 +1305,63 @@ public class CODHashTool
         }
     }
 
+	static void SATWeaponMaterials()
+    {
+        Console.WriteLine("Generating SAT Weapon Materials:\n");
+
+		string[] MaterialAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Materials.txt");
+
+		string[] WeaponMaterialFolders = File.ReadAllLines(@"cod-hash-tool-data\Materials\WeaponMaterialFolders.txt");
+		string[] T10WeaponNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\SATWeaponNames.txt");
+		string[] MaterialKeywords = File.ReadAllLines(@"cod-hash-tool-data\Materials\Keywords.txt");
+		//string[] SATBlueprintNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\SATBlueprintNames.txt");
+		string[] weaponMaterialPrefixs = {"mtl_att_sat_","mtl_wpn_sat_"};
+
+		if(!File.Exists("GeneratedMaterials.txt"))
+		{
+			var file = File.Create("GeneratedMaterials.txt");
+			file.Close();
+		}
+		using StreamWriter GeneratedMaterials = new StreamWriter("GeneratedMaterials.txt", true);
+
+        Parallel.ForEach(MaterialKeywords, Keyword =>
+        {
+            Parallel.ForEach(T10WeaponNames, T10WeaponName =>
+            {
+                Parallel.ForEach(WeaponMaterialFolders, MaterialFolder =>
+                {
+					foreach(string weaponMaterialPrefix in weaponMaterialPrefixs)
+					{
+						string stringedName = MaterialFolder + weaponMaterialPrefix + T10WeaponName + "_" + Keyword;
+						string generatedHash = CalcHash64_v1(stringedName);
+
+						if (debugEnabled)
+						{
+							Console.WriteLine(stringedName);
+						}
+
+						Parallel.ForEach(MaterialAssetLogSAT, hashedAsset =>
+						{
+							if (generatedHash == hashedAsset)
+							{
+								string output = generatedHash + "," + stringedName;
+
+								lock(writeLock)
+								{
+									GeneratedMaterials.WriteLine(output);
+									Console.WriteLine(output);
+								}
+							}
+						});
+					}
+                });
+            });
+        });
+
+		GeneratedMaterials.Flush();
+		GeneratedMaterials.Close();
+    }
+
 	static void GenerateAnimationsLegacy()
     {
         Console.WriteLine("Generating Animations:\n");
@@ -1177,7 +1373,7 @@ public class CODHashTool
 
         string[] Animations = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Animations.txt");
 		
-		if(File.Exists("GeneratedAnimationsLegacy.txt") != true)
+		if(!File.Exists("GeneratedAnimationsLegacy.txt"))
         {
             var file = File.Create("GeneratedAnimationsLegacy.txt");
             file.Close();
@@ -1215,15 +1411,15 @@ public class CODHashTool
 		string[] AnimationAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Animations.txt");
 		string[] AnimationAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Animations.txt");
 		string[] AnimationAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Animations.txt");
-		//string[] AnimationAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Animations.txt");
+		string[] AnimationAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Animations.txt");
 
 		var AnimationAssetLog = AnimationAssetLogIW9.Union(AnimationAssetLogJUP).ToArray();
 		AnimationAssetLog = AnimationAssetLog.Union(AnimationAssetLogT10).ToArray();
-		//AnimationAssetLog = AnimationAssetLog.Union(AnimationAssetLogSAT).ToArray();
+		AnimationAssetLog = AnimationAssetLog.Union(AnimationAssetLogSAT).ToArray();
 
         string[] Animations = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Animations.txt");
 		
-		if(File.Exists("GeneratedAnimations.txt") != true)
+		if(!File.Exists("GeneratedAnimations.txt"))
         {
             var file = File.Create("GeneratedAnimations.txt");
             file.Close();
@@ -1265,7 +1461,7 @@ public class CODHashTool
 
         string[] Images = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Images.txt");
 		
-		if(File.Exists("GeneratedImagesLegacy.txt") != true)
+		if(!File.Exists("GeneratedImagesLegacy.txt"))
         {
             var file = File.Create("GeneratedImagesLegacy.txt");
             file.Close();
@@ -1303,15 +1499,15 @@ public class CODHashTool
 		string[] ImageAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Images.txt");
 		string[] ImageAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Images.txt");
 		string[] ImageAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Images.txt");
-		//string[] ImageAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Images.txt");
+		string[] ImageAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Images.txt");
 
 		var ImageAssetLog = ImageAssetLogIW9.Union(ImageAssetLogJUP).ToArray();
 		ImageAssetLog = ImageAssetLog.Union(ImageAssetLogT10).ToArray();
-		//ImageAssetLog = ImageAssetLog.Union(ImageAssetLogSAT).ToArray();
+		ImageAssetLog = ImageAssetLog.Union(ImageAssetLogSAT).ToArray();
 
 		string[] Images = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Images.txt");
 	
-		if(File.Exists("GeneratedImages.txt") != true)
+		if(!File.Exists("GeneratedImages.txt"))
 		{
 			var file = File.Create("GeneratedImages.txt");
 			file.Close();
@@ -1353,7 +1549,7 @@ public class CODHashTool
 		string[] MaterialFolders = File.ReadAllLines(@"cod-hash-tool-data\Materials\MaterialFolderNames.txt");
 		string[] Materials = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Materials.txt");
 	
-		if(File.Exists("GeneratedMaterialsLegacy.txt") != true)
+		if(!File.Exists("GeneratedMaterialsLegacy.txt"))
 		{
 			var file = File.Create("GeneratedMaterialsLegacy.txt");
 			file.Close();
@@ -1395,15 +1591,15 @@ public class CODHashTool
 		string[] MaterialAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Materials.txt");
 		string[] MaterialAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Materials.txt");
 		string[] MaterialAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Materials.txt");
-		//string[] MaterialAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Materials.txt");
+		string[] MaterialAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Materials.txt");
 		var MaterialAssetLog = MaterialAssetLogIW9.Union(MaterialAssetLogJUP).ToArray();
 		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogT10).ToArray();
-		//MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogSAT).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogSAT).ToArray();
 
 		string[] MaterialFolders = File.ReadAllLines(@"cod-hash-tool-data\Materials\MaterialFolderNames.txt");
 		string[] Materials = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Materials.txt");
 
-		if(File.Exists("GeneratedMaterials.txt") != true)
+		if(!File.Exists("GeneratedMaterials.txt"))
 		{
 			var file = File.Create("GeneratedMaterials.txt");
 			file.Close();
@@ -1449,7 +1645,7 @@ public class CODHashTool
 
 		string[] Models = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Models.txt");
 	
-		if(File.Exists("GeneratedModelsLegacy.txt") != true)
+		if(!File.Exists("GeneratedModelsLegacy.txt"))
 		{
 			var file = File.Create("GeneratedModelsLegacy.txt");
 			file.Close();
@@ -1487,15 +1683,15 @@ public class CODHashTool
 		string[] ModelAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Models.txt");
 		string[] ModelAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Models.txt");
 		string[] ModelAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Models.txt");
-		//string[] ModelAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Models.txt");
+		string[] ModelAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Models.txt");
 
 		var ModelAssetLog = ModelAssetLogIW9.Union(ModelAssetLogJUP).ToArray();
 		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogT10).ToArray();
-		//ModelAssetLog = ModelAssetLog.Union(ModelAssetLogSAT).ToArray();
+		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogSAT).ToArray();
 
 		string[] Models = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Models.txt");
 
-		if(File.Exists("GeneratedModels.txt") != true)
+		if(!File.Exists("GeneratedModels.txt"))
 		{
 			var file = File.Create("GeneratedModels.txt");
 			file.Close();
@@ -1538,7 +1734,7 @@ public class CODHashTool
 		string[] Sounds = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Sounds.txt");
 		string[] Suffixes = File.ReadAllLines(@"cod-hash-tool-data\Sounds\SoundSuffixes.txt");
 	
-		if(File.Exists("GeneratedSoundsLegacy.txt") != true)
+		if(!File.Exists("GeneratedSoundsLegacy.txt"))
 		{
 			var file = File.Create("GeneratedSoundsLegacy.txt");
 			file.Close();
@@ -1579,16 +1775,16 @@ public class CODHashTool
 		string[] SoundAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Sounds.txt");
 		string[] SoundAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Sounds.txt");
 		string[] SoundAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Sounds.txt");
-		//string[] SoundAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Sounds.txt");
+		string[] SoundAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Sounds.txt");
 
 		var SoundAssetLog = SoundAssetLogIW9.Union(SoundAssetLogJUP).ToArray();
 		SoundAssetLog = SoundAssetLog.Union(SoundAssetLogT10).ToArray();
-		//SoundAssetLog = SoundAssetLog.Union(SoundAssetLogSAT).ToArray();
+		SoundAssetLog = SoundAssetLog.Union(SoundAssetLogSAT).ToArray();
 
 		string[] Sounds = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Sounds.txt");
 		string[] Suffixes = File.ReadAllLines(@"cod-hash-tool-data\Sounds\SoundSuffixes.txt");
 
-		if(File.Exists("GeneratedSounds.txt") != true)
+		if(!File.Exists("GeneratedSounds.txt"))
 		{
 			var file = File.Create("GeneratedSounds.txt");
 			file.Close();
@@ -1621,6 +1817,152 @@ public class CODHashTool
 		GeneratedSounds.Flush();
 		GeneratedSounds.Close();
 	}
+
+	static void GenerateSoundbanks()
+    {
+        Console.WriteLine("Generating Soundbanks:\n");
+
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Resident");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Transient");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Resident");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Transient");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank\Resident");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank\Transient");
+        
+		string[] IW9Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Resident");
+        string[] IW9SoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Transient");
+        string[] JUPSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Resident");
+        string[] JUPSoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Transient");
+        string[] T10Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank\Resident");
+        string[] T10SoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank\Transient");
+
+		var Soundbanks = IW9Soundbanks.Union(IW9SoundbanksTR).ToArray();
+		Soundbanks = Soundbanks.Union(JUPSoundbanks).ToArray();
+		Soundbanks = Soundbanks.Union(JUPSoundbanksTR).ToArray();
+		Soundbanks = Soundbanks.Union(T10Soundbanks).ToArray();
+		Soundbanks = Soundbanks.Union(T10SoundbanksTR).ToArray();
+		 
+        string[] SoundbankNames = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Soundbanks.txt");
+		string[] SoundbankSuffixes = File.ReadAllLines(@"cod-hash-tool-data\SoundBanks\SoundbankSuffixes.txt");
+
+		if(!File.Exists("GeneratedSoundbanks.txt"))
+		{
+			var file = File.Create("GeneratedSoundbanks.txt");
+			file.Close();
+		}
+
+		foreach(string soundbankName in SoundbankNames)
+        {
+			using StreamWriter GeneratedSoundbanks = new StreamWriter("GeneratedSoundbanks.txt", true);
+
+            Parallel.ForEach(Soundbanks, soundbank =>
+            {
+                if(soundbank.Contains("ent\\0x"))
+                {
+                    Parallel.ForEach(SoundbankSuffixes, soundBankSuffix =>
+                    {
+						string soundbankPath = soundbank.Substring(0, soundbank.LastIndexOf('\\') + 1);
+
+                        string soundbankHashed = soundbank.Substring(soundbank.LastIndexOf('\\') + 1);
+                        soundbankHashed = soundbankHashed.Replace("0x","");
+                        soundbankHashed = soundbankHashed.Replace(".csv","");
+                        string stringedName = soundbankName + soundBankSuffix;
+
+                        if(debugEnabled)
+                        {
+                            Console.WriteLine(stringedName + " | " + soundbankHashed);
+                        }
+
+                        if(CalcHash64_v1(stringedName) == soundbankHashed)
+                        {
+                            if(File.Exists(soundbankPath + "\\0x" + soundbankHashed + ".csv"))
+                            {
+                                Console.WriteLine(soundbankHashed + " | " + stringedName);
+                                File.Move(soundbankPath + "\\0x" + soundbankHashed + ".csv", soundbankPath + "\\" + stringedName + ".csv");
+
+								string output = soundbankHashed + "," + stringedName;
+
+								lock(writeLock)
+								{
+									GeneratedSoundbanks.WriteLine(output);
+									Console.WriteLine(output);
+								}
+                            }
+                        }
+                    });
+                }
+            });
+
+			GeneratedSoundbanks.Flush();
+			GeneratedSoundbanks.Close();
+        }
+    }
+
+	static void GenerateAnimpackages()
+    {
+        Console.WriteLine("Generating Anim Packages:\n");
+
+		Directory.CreateDirectory(@"cod-hash-tool-data\AnimPackages\IW9AnimPkg");
+		Directory.CreateDirectory(@"cod-hash-tool-data\AnimPackages\JUPAnimPkg");
+		Directory.CreateDirectory(@"cod-hash-tool-data\AnimPackages\T10AnimPkg");
+
+		string[] IW9AnimPackages = Directory.GetFiles(@"cod-hash-tool-data\AnimPackages\IW9AnimPkg");
+        string[] JUPAnimPackages = Directory.GetFiles(@"cod-hash-tool-data\AnimPackages\JUPAnimPkg");
+        string[] T10AnimPackages = Directory.GetFiles(@"cod-hash-tool-data\AnimPackages\T10AnimPkg");
+
+		var AnimPackages = IW9AnimPackages.Union(JUPAnimPackages).ToArray();
+		AnimPackages = AnimPackages.Union(T10AnimPackages).ToArray();
+
+        string[] AnimPackageNames = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\AnimPackages.txt");
+
+		if(!File.Exists("GeneratedAnimpackages.txt"))
+		{
+			var file = File.Create("GeneratedAnimpackages.txt");
+			file.Close();
+		}
+
+        foreach(string animpackageName in AnimPackageNames)
+        {
+			using StreamWriter GeneratedAnimpackages = new StreamWriter("GeneratedAnimpackages.txt", true);
+
+            Parallel.ForEach(AnimPackages, animpackage =>
+            {
+                if(animpackage.Contains("AnimPkg\\0x"))
+                {
+					string animpackagePath = animpackage.Substring(0, animpackage.LastIndexOf('\\') + 1);
+
+                    string animpackageHashed =  animpackage.Substring(animpackage.LastIndexOf('\\') + 1);
+                    animpackageHashed = animpackageHashed.Replace("0x","");
+                    animpackageHashed = animpackageHashed.Replace(".json","");
+
+                    if(debugEnabled)
+                    {
+                        Console.WriteLine(animpackageName + " | " + animpackageHashed);
+                    }
+
+                    if(CalcHash64_v1(animpackageName) == animpackageHashed)
+                    {
+                        if(File.Exists(animpackagePath + "\\0x" + animpackageHashed + ".json"))
+                        {
+                            Console.WriteLine(animpackageHashed + " | " + animpackageName);
+                            File.Move(animpackagePath + "\\0x" + animpackageHashed + ".json", animpackagePath + "\\" + animpackageName + ".json");
+
+							string output = animpackageHashed + "," + animpackageName;
+
+							lock(writeLock)
+							{
+								GeneratedAnimpackages.WriteLine(output);
+								Console.WriteLine(output);
+							}
+                        }
+                    }
+                }
+            });
+
+			GeneratedAnimpackages.Flush();
+			GeneratedAnimpackages.Close();
+        }
+    }
 
 	static void SplitAssetLogs()
     {
@@ -1740,4 +2082,27 @@ public class CODHashTool
 			}
         }
     }
+
+	static void Hasher()
+	{
+		for(;;)
+		{
+			Console.WriteLine("Enter an asset name to hash, enter 'Quit' to exit: ");
+			
+			string? userInput = Console.ReadLine();
+
+			if(userInput != null)
+			{
+				if(userInput.ToLower() == "quit")
+				{
+					break;
+				}
+
+				Console.Write(userInput + " | Legacy = " + CalcHash64_v2(userInput) + "\n");
+				Console.Write(userInput + " | Current = " + CalcHash64_v1(userInput) + "\n");
+				Console.Write(userInput + " | Legacy Bone = " + CalcHash32(userInput) + "\n");
+				Console.Write(userInput + " | Current Bone = " + CalcHash64_v3(userInput) + "\n");
+			}
+		}
+	}
 }
