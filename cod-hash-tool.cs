@@ -66,7 +66,7 @@ public class CODHashTool
 
 					415 - Weapon Materials (T10)
 
-					416 - Weapon Materials (SAT) (NOT IMPLEMENTED)
+					416 - Weapon Materials (SAT)
 
 				42 - Model Name to Material Name
 
@@ -106,6 +106,8 @@ public class CODHashTool
 
 					613 - Weapon Sounds (T10)
 
+					614 - Weapon Sounds (SAT)
+					
 			7 - Soundbanks
 
 				71 - Soundbank Names
@@ -273,6 +275,31 @@ public class CODHashTool
 						case "441":
 						{
 							//OperatorMaterials();
+
+							break;
+						}
+						//WEAPON SOUNDS
+						case "611":
+						{
+							IW9WeaponSounds();
+
+							break;
+						}
+						case "612":
+						{
+							JUPWeaponSounds();
+
+							break;
+						}
+						case "613":
+						{
+							T10WeaponSounds();
+
+							break;
+						}
+						case "614":
+						{
+							SATWeaponSounds();
 
 							break;
 						}
@@ -1254,7 +1281,7 @@ public class CODHashTool
 		string[] T10WeaponNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\T10WeaponNames.txt");
 		string[] MaterialKeywords = File.ReadAllLines(@"cod-hash-tool-data\Materials\Keywords.txt");
 		string[] T10BlueprintNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\T10BlueprintNames.txt");
-		string[] weaponMaterialPrefixs = {"mtl_att_t10_","mtl_wpn_t10_"};
+		string[] weaponMaterialPrefixes = {"mtl_att_t10_","mtl_wpn_t10_"};
 
 		if(!File.Exists("GeneratedMaterials.txt"))
 		{
@@ -1272,7 +1299,7 @@ public class CODHashTool
                 {
                     Parallel.ForEach(WeaponMaterialFolders, MaterialFolder =>
                     {
-						foreach(string weaponMaterialPrefix in weaponMaterialPrefixs)
+						foreach(string weaponMaterialPrefix in weaponMaterialPrefixes)
 						{
 							string stringedName = MaterialFolder + weaponMaterialPrefix + T10WeaponName + "_" + Keyword + T10BlueprintName;
 							string generatedHash = CalcHash64_v1(stringedName);
@@ -1314,25 +1341,25 @@ public class CODHashTool
 		string[] WeaponMaterialFolders = File.ReadAllLines(@"cod-hash-tool-data\Materials\WeaponMaterialFolders.txt");
 		string[] T10WeaponNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\SATWeaponNames.txt");
 		string[] MaterialKeywords = File.ReadAllLines(@"cod-hash-tool-data\Materials\Keywords.txt");
-		//string[] SATBlueprintNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\SATBlueprintNames.txt");
-		string[] weaponMaterialPrefixs = {"mtl_att_sat_","mtl_wpn_sat_"};
+		string[] SATBlueprintNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\SATBlueprintNames.txt");
 
 		if(!File.Exists("GeneratedMaterials.txt"))
 		{
 			var file = File.Create("GeneratedMaterials.txt");
 			file.Close();
 		}
+
 		using StreamWriter GeneratedMaterials = new StreamWriter("GeneratedMaterials.txt", true);
 
         Parallel.ForEach(MaterialKeywords, Keyword =>
         {
             Parallel.ForEach(T10WeaponNames, T10WeaponName =>
             {
-                Parallel.ForEach(WeaponMaterialFolders, MaterialFolder =>
+				Parallel.ForEach(SATBlueprintNames, Blueprint =>
                 {
-					foreach(string weaponMaterialPrefix in weaponMaterialPrefixs)
+					Parallel.ForEach(WeaponMaterialFolders, MaterialFolder =>
 					{
-						string stringedName = MaterialFolder + weaponMaterialPrefix + T10WeaponName + "_" + Keyword;
+						string stringedName = MaterialFolder + "mtl_sat_" + T10WeaponName + "_" + Keyword + Blueprint;
 						string generatedHash = CalcHash64_v1(stringedName);
 
 						if (debugEnabled)
@@ -1353,13 +1380,285 @@ public class CODHashTool
 								}
 							}
 						});
-					}
-                });
+					});
+				});
             });
         });
 
 		GeneratedMaterials.Flush();
 		GeneratedMaterials.Close();
+    }
+
+	static void IW9WeaponSounds()
+    {
+        Console.WriteLine("Generating IW9 Weapon Sounds:\n");
+
+        if (File.Exists("GeneratedSounds.txt") != true)
+        {
+            var file = File.Create("GeneratedSounds.txt");
+            file.Close();
+        }
+
+        string[] SoundAssetLog = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Sounds.txt");
+
+        string[] WeaponSoundFolderPaths = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundFolderPathsIW9JUP.txt");
+        string[] WeaponSoundCategories = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundCategoriesIW9JUP.txt");
+        string[] WeaponSoundNames = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundNamesIW9JUP.txt");
+        string[] WeaponSoundSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundSuffixesIW9.txt");
+
+        foreach (string soundFolder in WeaponSoundFolderPaths)
+        {
+            if (soundFolder.Contains('*') == false)
+            {
+				using StreamWriter GeneratedSounds = new StreamWriter("GeneratedSounds.txt", true);
+
+                Console.WriteLine("Current Folder: " + soundFolder);
+
+                Parallel.ForEach(WeaponSoundCategories, soundCategory =>
+                {
+                    if (soundCategory.Contains('*') == false)
+                    {
+                        Parallel.ForEach(WeaponSoundNames, soundName =>
+                        {
+                            Parallel.ForEach(WeaponSoundSuffixes, weaponSoundSuffix =>
+                            {
+                                string stringedName = soundFolder + soundCategory + soundName;
+                                string generatedHash = CalcHash64_v1(stringedName + weaponSoundSuffix);
+
+                                if (debugEnabled)
+                                {
+                                    Console.WriteLine(stringedName + weaponSoundSuffix + " | " + generatedHash);
+                                }
+
+                                Parallel.ForEach(SoundAssetLog, hashedSound =>
+                                {
+                                    if (hashedSound == generatedHash)
+                                    {
+                                        stringedName = stringedName.Replace('.', '\\');
+
+                                        string output = generatedHash + "," + stringedName + weaponSoundSuffix;
+
+										lock(writeLock)
+										{
+											GeneratedSounds.WriteLine(output);
+											Console.WriteLine(output);
+										}
+                                    }
+                                });
+                            });
+                        });
+                    }
+                });
+
+				GeneratedSounds.Flush();
+				GeneratedSounds.Close();
+            }
+        }
+
+    }
+
+	static void JUPWeaponSounds()
+    {
+        Console.WriteLine("Generating JUP Weapon Sounds:\n");
+
+        if (File.Exists("GeneratedSounds.txt") != true)
+        {
+            var file = File.Create("GeneratedSounds.txt");
+            file.Close();
+        }
+
+        string[] SoundAssetLog = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Sounds.txt");
+
+        string[] WeaponSoundFolderPaths = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundFolderPathsIW9JUP.txt");
+        string[] WeaponSoundCategories = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundCategoriesIW9JUP.txt");
+        string[] WeaponSoundNames = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundNamesIW9JUP.txt");
+        string[] WeaponSoundSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundSuffixesJUPT10SAT.txt");
+
+        foreach (string soundFolder in WeaponSoundFolderPaths)
+        {
+            if (soundFolder.Contains('*') == false)
+            {
+				using StreamWriter GeneratedSounds = new StreamWriter("GeneratedSounds.txt", true);
+
+                Console.WriteLine("Current Folder: " + soundFolder);
+
+                Parallel.ForEach(WeaponSoundCategories, soundCategory =>
+                {
+                    if (soundCategory.Contains('*') == false)
+                    {
+                        Parallel.ForEach(WeaponSoundNames, soundName =>
+                        {
+                            Parallel.ForEach(WeaponSoundSuffixes, weaponSoundSuffix =>
+                            {
+                                string stringedName = soundFolder + soundCategory + soundName;
+                                string generatedHash = CalcHash64_v1(stringedName + weaponSoundSuffix);
+
+                                if (debugEnabled)
+                                {
+                                    Console.WriteLine(stringedName + weaponSoundSuffix + " | " + generatedHash);
+                                }
+
+                                Parallel.ForEach(SoundAssetLog, hashedSound =>
+                                {
+                                    if (hashedSound == generatedHash)
+                                    {
+                                        stringedName = stringedName.Replace('.', '\\');
+
+                                        string output = generatedHash + "," + stringedName + weaponSoundSuffix;
+
+										lock(writeLock)
+										{
+											GeneratedSounds.WriteLine(output);
+											Console.WriteLine(output);
+										}
+                                    }
+                                });
+                            });
+                        });
+                    }
+                });
+
+				GeneratedSounds.Flush();
+				GeneratedSounds.Close();
+            }
+        }
+
+    }
+
+	static void T10WeaponSounds()
+    {
+        Console.WriteLine("Generating T10 Weapon Sounds:\n");
+
+        if (File.Exists("GeneratedSounds.txt") != true)
+        {
+            var file = File.Create("GeneratedSounds.txt");
+            file.Close();
+        }
+
+        string[] SoundAssetLog = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Sounds.txt");
+
+        string[] WeaponSoundFolderPaths = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundFolderPathsT10.txt");
+        string[] WeaponSoundCategories = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundCategoriesT10SAT.txt");
+        string[] WeaponSoundNames = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundNamesT10SAT.txt");
+        string[] WeaponSoundSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundSuffixesJUPT10SAT.txt");
+
+        foreach (string soundFolder in WeaponSoundFolderPaths)
+        {
+            if (soundFolder.Contains('*') == false)
+            {
+				using StreamWriter GeneratedSounds = new StreamWriter("GeneratedSounds.txt", true);
+
+                Console.WriteLine("Current Folder: " + soundFolder);
+
+                Parallel.ForEach(WeaponSoundCategories, soundCategory =>
+                {
+                    if (soundCategory.Contains('*') == false)
+                    {
+                        Parallel.ForEach(WeaponSoundNames, soundName =>
+                        {
+                            Parallel.ForEach(WeaponSoundSuffixes, weaponSoundSuffix =>
+                            {
+                                string stringedName = soundFolder + soundCategory + soundName;
+                                string generatedHash = CalcHash64_v1(stringedName + weaponSoundSuffix);
+
+                                if (debugEnabled)
+                                {
+                                    Console.WriteLine(stringedName + weaponSoundSuffix + " | " + generatedHash);
+                                }
+
+                                Parallel.ForEach(SoundAssetLog, hashedSound =>
+                                {
+                                    if (hashedSound == generatedHash)
+                                    {
+                                        stringedName = stringedName.Replace('/', '\\');
+
+                                        string output = generatedHash + "," + stringedName + weaponSoundSuffix;
+
+										lock(writeLock)
+										{
+											GeneratedSounds.WriteLine(output);
+											Console.WriteLine(output);
+										}
+                                    }
+                                });
+                            });
+                        });
+                    }
+                });
+
+				GeneratedSounds.Flush();
+				GeneratedSounds.Close();
+            }
+        }
+
+    }
+
+	static void SATWeaponSounds()
+    {
+        Console.WriteLine("Generating SAT Weapon Sounds:\n");
+
+        if (File.Exists("GeneratedSounds.txt") != true)
+        {
+            var file = File.Create("GeneratedSounds.txt");
+            file.Close();
+        }
+
+        string[] SoundAssetLog = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Sounds.txt");
+
+        string[] WeaponSoundFolderPaths = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundFolderPathsSAT.txt");
+        string[] WeaponSoundCategories = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundCategoriesT10SAT.txt");
+        string[] WeaponSoundNames = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundNamesT10SAT.txt");
+        string[] WeaponSoundSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Sounds\WeaponSoundSuffixesJUPT10SAT.txt");
+
+        foreach (string soundFolder in WeaponSoundFolderPaths)
+        {
+            if (soundFolder.Contains('*') == false)
+            {
+				using StreamWriter GeneratedSounds = new StreamWriter("GeneratedSounds.txt", true);
+
+                Console.WriteLine("Current Folder: " + soundFolder);
+
+                Parallel.ForEach(WeaponSoundCategories, soundCategory =>
+                {
+                    if (soundCategory.Contains('*') == false)
+                    {
+                        Parallel.ForEach(WeaponSoundNames, soundName =>
+                        {
+                            Parallel.ForEach(WeaponSoundSuffixes, weaponSoundSuffix =>
+                            {
+                                string stringedName = soundFolder + soundCategory + soundName;
+                                string generatedHash = CalcHash64_v1(stringedName + weaponSoundSuffix);
+
+                                if (debugEnabled)
+                                {
+                                    Console.WriteLine(stringedName + weaponSoundSuffix + " | " + generatedHash);
+                                }
+
+                                Parallel.ForEach(SoundAssetLog, hashedSound =>
+                                {
+                                    if (hashedSound == generatedHash)
+                                    {
+                                        stringedName = stringedName.Replace('/', '\\');
+
+                                        string output = generatedHash + "," + stringedName + weaponSoundSuffix;
+
+										lock(writeLock)
+										{
+											GeneratedSounds.WriteLine(output);
+											Console.WriteLine(output);
+										}
+                                    }
+                                });
+                            });
+                        });
+                    }
+                });
+
+				GeneratedSounds.Flush();
+				GeneratedSounds.Close();
+            }
+        }
+
     }
 
 	static void GenerateAnimationsLegacy()
@@ -1746,13 +2045,14 @@ public class CODHashTool
 		{
 			foreach(string soundSuffix in Suffixes)
 			{
-				string generatedHash = CalcHash64_v2(soundName);
+				string stringedName = soundName + soundSuffix;
+				string generatedHash = CalcHash64_v2(stringedName);
 
 				Parallel.ForEach(SoundAssetLog, hashedAnim =>
 				{
 					if(generatedHash == hashedAnim)
 					{
-						string output = hashedAnim + "," + soundName;
+						string output = hashedAnim + "," + stringedName;
             
 						lock(writeLock)
 						{
@@ -1796,13 +2096,14 @@ public class CODHashTool
 		{
 			foreach(string soundSuffix in Suffixes)
 			{
-				string generatedHash = CalcHash64_v1(soundName);
+				string stringedName = soundName + soundSuffix;
+				string generatedHash = CalcHash64_v1(stringedName);
 
 				Parallel.ForEach(SoundAssetLog, hashedAnim =>
 				{
 					if(generatedHash == hashedAnim)
 					{
-						string output = hashedAnim + "," + soundName;
+						string output = hashedAnim + "," + stringedName;
             
 						lock(writeLock)
 						{
