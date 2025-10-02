@@ -274,7 +274,7 @@ public class CODHashTool
 						//OPERATOR MATERIALS
 						case "441":
 						{
-							//OperatorMaterials();
+							OperatorMaterials();
 
 							break;
 						}
@@ -1380,6 +1380,62 @@ public class CODHashTool
 								}
 							}
 						});
+					});
+				});
+            });
+        });
+
+		GeneratedMaterials.Flush();
+		GeneratedMaterials.Close();
+    }
+
+	static void OperatorMaterials()
+    {
+        Console.WriteLine("Generating Operator Materials:\n");
+
+		string[] MaterialAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Materials.txt");
+		string[] MaterialAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Materials.txt");
+		var MaterialAssetLog = MaterialAssetLogSAT.Union(MaterialAssetLogT10).ToArray();
+
+		string[] MaterialFolders = File.ReadAllLines(@"cod-hash-tool-data\Materials\MaterialFolderNames.txt");
+		string[] MaterialKeywords = File.ReadAllLines(@"cod-hash-tool-data\Materials\OperatorKeywords.txt");
+
+		string[] OperatorNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\OperatorNames.txt");
+
+		if(!File.Exists("GeneratedMaterials.txt"))
+		{
+			var file = File.Create("GeneratedMaterials.txt");
+			file.Close();
+		}
+
+		using StreamWriter GeneratedMaterials = new StreamWriter("GeneratedMaterials.txt", true);
+
+        Parallel.ForEach(MaterialKeywords, Keyword =>
+        {
+            Parallel.ForEach(OperatorNames, Operator =>
+            {
+				Parallel.ForEach(MaterialFolders, MaterialFolder =>
+				{
+					string stringedName = MaterialFolder + "c_" + Operator + "_" + Keyword;
+					string generatedHash = CalcHash64_v1(stringedName);
+
+					if (debugEnabled)
+					{
+						Console.WriteLine(stringedName);
+					}
+
+					Parallel.ForEach(MaterialAssetLog, hashedAsset =>
+					{
+						if (generatedHash == hashedAsset)
+						{
+							string output = generatedHash + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedMaterials.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
 					});
 				});
             });
