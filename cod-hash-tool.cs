@@ -226,6 +226,12 @@ public class CODHashTool
 
 							break;
 						}
+						case "118":
+						{
+							SATWMWeaponAnimations();
+
+							break;
+						}
 						//ANIM PACKAGES
 						case "211":
 						{
@@ -268,6 +274,19 @@ public class CODHashTool
 						case "416":
 						{
 							SATWeaponMaterials();
+
+							break;
+						}
+						//MODEL NAME TO MATERIAL
+						case "421":
+						{
+							LegacyModelsToMaterials();
+
+							break;
+						}
+						case "422":
+						{
+							ModelsToMaterials();
 
 							break;
 						}
@@ -961,6 +980,63 @@ public class CODHashTool
 		}
 	}
 
+	static void SATWMWeaponAnimations()
+    {
+        Console.WriteLine("Generating SAT WM Weapon Animations:\n");
+
+		string[] SATAnimationAssetLog = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Animations.txt");
+
+		string[] SATWeaponNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\SATWeaponNames.txt");
+		string[] T10WMAnimations = File.ReadAllLines(@"cod-hash-tool-data\Animations\T10WMAnimations.txt");
+        string[] T10WMDetails = File.ReadAllLines(@"cod-hash-tool-data\Animations\T10WMDetails.txt");
+        string[] T10WMSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Animations\T10WMSuffixes.txt");
+		
+        if(!File.Exists("GeneratedAnimations.txt"))
+		{
+			var file = File.Create("GeneratedAnimations.txt");
+			file.Close();
+		}
+
+        foreach (string weaponName in SATWeaponNames)
+        {
+            using StreamWriter GeneratedAnimations = new StreamWriter("GeneratedAnimations.txt", true);
+
+			foreach (string animation in T10WMAnimations)
+            {
+				foreach (string details in T10WMDetails)
+				{
+					foreach (string suffixType in T10WMSuffixes)
+					{
+						string stringedName = "sat_wm_" + weaponName + "_" + animation + details + suffixType;
+						string generatedHash = CalcHash64_v1(stringedName);
+
+						if (debugEnabled)
+						{
+							Console.WriteLine(stringedName);
+						}
+
+						Parallel.ForEach(SATAnimationAssetLog, hash =>
+						{
+							if(hash == generatedHash)
+							{
+								string output = generatedHash + "," + stringedName;
+
+								lock(writeLock)
+								{
+									GeneratedAnimations.WriteLine(output);
+									Console.WriteLine(output);
+								}
+							}
+						});
+					}
+                }
+            }
+
+            GeneratedAnimations.Flush();
+            GeneratedAnimations.Close();
+        }
+    }
+
 	static void AnimPackages()
     {
         string game = PickGame(0);
@@ -1381,6 +1457,122 @@ public class CODHashTool
 							}
 						});
 					});
+				});
+            });
+        });
+
+		GeneratedMaterials.Flush();
+		GeneratedMaterials.Close();
+	}
+
+	static void LegacyModelsToMaterials()
+    {
+        Console.WriteLine("Generating Legacy Model Names to Materials:\n");
+
+		string[] MaterialAssetLogT8 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T8\Materials.txt");
+		string[] MaterialAssetLogT9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T9\Materials.txt");
+		var MaterialAssetLog = MaterialAssetLogT8.Union(MaterialAssetLogT9).ToArray();
+
+		string[] ModelsT8 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T8\UnhashedModels.txt");
+		string[] ModelsT9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T9\UnhashedModels.txt");
+		var Models = ModelsT8.Union(ModelsT9).ToArray();
+
+		string[] Prefixes = {"mtl_",""};
+
+		if(!File.Exists("GeneratedMaterials.txt"))
+		{
+			var file = File.Create("GeneratedMaterials.txt");
+			file.Close();
+		}
+
+		using StreamWriter GeneratedMaterials = new StreamWriter("GeneratedMaterials.txt", true);
+
+        Parallel.ForEach(Prefixes, Prefix =>
+        {
+            Parallel.ForEach(Models, Model =>
+            {
+				string stringedName = Prefix + Model;
+				string generatedHash = CalcHash64_v2(stringedName);
+
+				if (debugEnabled)
+				{
+					Console.WriteLine(stringedName);
+				}
+
+				Parallel.ForEach(MaterialAssetLog, hashedAsset =>
+				{
+					if (generatedHash == hashedAsset)
+					{
+						string output = generatedHash + "," + stringedName;
+
+						lock(writeLock)
+						{
+							GeneratedMaterials.WriteLine(output);
+							Console.WriteLine(output);
+						}
+					}
+				});
+            });
+        });
+
+		GeneratedMaterials.Flush();
+		GeneratedMaterials.Close();
+    }
+
+	static void ModelsToMaterials()
+    {
+        Console.WriteLine("Generating Model Names to Materials:\n");
+
+		string[] MaterialAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Materials.txt");
+		string[] MaterialAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Materials.txt");
+		string[] MaterialAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Materials.txt");
+		string[] MaterialAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Materials.txt");
+		var MaterialAssetLog = MaterialAssetLogIW9.Union(MaterialAssetLogJUP).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogT10).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogSAT).ToArray();
+
+		string[] ModelsIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\UnhashedModels.txt");
+		string[] ModelsJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\UnhashedModels.txt");
+		string[] ModelsT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\UnhashedModels.txt");
+		string[] ModelsSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\UnhashedModels.txt");
+		var Models = ModelsIW9.Union(ModelsJUP).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(ModelsT10).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(ModelsSAT).ToArray();
+
+		string[] Prefixes = {"mtl_",""};
+
+		if(!File.Exists("GeneratedMaterials.txt"))
+		{
+			var file = File.Create("GeneratedMaterials.txt");
+			file.Close();
+		}
+
+		using StreamWriter GeneratedMaterials = new StreamWriter("GeneratedMaterials.txt", true);
+
+        Parallel.ForEach(Prefixes, Prefix =>
+        {
+            Parallel.ForEach(Models, Model =>
+            {
+				string stringedName = Prefix + Model;
+				string generatedHash = CalcHash64_v1(stringedName);
+
+				if (debugEnabled)
+				{
+					Console.WriteLine(stringedName);
+				}
+
+				Parallel.ForEach(MaterialAssetLog, hashedAsset =>
+				{
+					if (generatedHash == hashedAsset)
+					{
+						string output = generatedHash + "," + stringedName;
+
+						lock(writeLock)
+						{
+							GeneratedMaterials.WriteLine(output);
+							Console.WriteLine(output);
+						}
+					}
 				});
             });
         });
