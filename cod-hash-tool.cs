@@ -164,6 +164,8 @@ public class CODHashTool
 
 				94 - Grab Sounds
 
+				95 - Sound Guesser
+
 				98 - Hasher
 
 				99 - Toggle Debug Printing
@@ -399,6 +401,12 @@ public class CODHashTool
 						case "91":
 						{
 							SplitAssetLogs();
+
+							break;
+						}
+						case "95":
+						{
+							SoundGuesser();
 
 							break;
 						}
@@ -2629,6 +2637,66 @@ public class CODHashTool
                     break;
                 }
 			}
+        }
+    }
+
+	 static void SoundGuesser()
+    {
+        Console.WriteLine("Enter a sound path up to the suffix to guess a sound name, type 'Quit' to exit:\n");
+
+		string[] SoundAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Sounds.txt");
+		string[] SoundAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Sounds.txt");
+		string[] SoundAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Sounds.txt");
+		string[] SoundAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Sounds.txt");
+
+		var SoundAssetLog = SoundAssetLogIW9.Union(SoundAssetLogJUP).ToArray();
+		SoundAssetLog = SoundAssetLog.Union(SoundAssetLogT10).ToArray();
+		SoundAssetLog = SoundAssetLog.Union(SoundAssetLogSAT).ToArray();
+
+		string[] SoundSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Sounds\SoundSuffixes.txt");
+
+        if(File.Exists("GeneratedSounds.txt") != true)
+        {
+            var file = File.Create("GeneratedSounds.txt");
+            file.Close();
+        }
+
+        for(;;)
+        {
+            string? userResponse = Console.ReadLine();
+
+            using StreamWriter GeneratedSounds = new StreamWriter("GeneratedSounds.txt", true);
+
+            if(userResponse != null && userResponse.ToLower() == "quit")
+            {
+                break;
+            }
+            else if(userResponse != null)
+            {
+                Parallel.ForEach(SoundSuffixes, suffix =>
+                {
+                    string stringedName = userResponse + suffix;
+                    string generatedHash = CalcHash64_v1(stringedName);
+
+                    Parallel.ForEach(SoundAssetLog, hashedSound =>
+                    {
+                        if(hashedSound == generatedHash)
+                        {
+                            string swappedSybmols = userResponse.Replace('.','\\');
+                            string output = generatedHash + "," + swappedSybmols + suffix;
+
+                            lock(writeLock)
+							{
+								GeneratedSounds.WriteLine(output);
+								Console.WriteLine(output);
+							}
+                        }
+                    });
+                });
+            }
+
+            GeneratedSounds.Flush();
+			GeneratedSounds.Close();
         }
     }
 
