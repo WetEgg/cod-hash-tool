@@ -166,6 +166,8 @@ public class CODHashTool
 
 				95 - Sound Guesser
 
+				97 - Find Anims from Bone Name
+
 				98 - Hasher
 
 				99 - Toggle Debug Printing
@@ -324,6 +326,13 @@ public class CODHashTool
 
 							break;
 						}
+						//SOUNDBANKS
+						case "71":
+						{
+							Soundbanks();
+
+							break;
+						}
 						//GENERATE FOUND NAMES
 						case "811":
 						{
@@ -407,6 +416,12 @@ public class CODHashTool
 						case "95":
 						{
 							SoundGuesser();
+
+							break;
+						}
+						case "97":
+						{
+							AnimScanner();
 
 							break;
 						}
@@ -998,6 +1013,7 @@ public class CODHashTool
 		string[] T10WMAnimations = File.ReadAllLines(@"cod-hash-tool-data\Animations\T10WMAnimations.txt");
         string[] T10WMDetails = File.ReadAllLines(@"cod-hash-tool-data\Animations\T10WMDetails.txt");
         string[] T10WMSuffixes = File.ReadAllLines(@"cod-hash-tool-data\Animations\T10WMSuffixes.txt");
+		string[] midFixes = File.ReadAllLines(@"cod-hash-tool-data\Animations\SATWMAttachments.txt");
 		
         if(!File.Exists("GeneratedAnimations.txt"))
 		{
@@ -1005,44 +1021,47 @@ public class CODHashTool
 			file.Close();
 		}
 
-        foreach (string weaponName in SATWeaponNames)
-        {
-            using StreamWriter GeneratedAnimations = new StreamWriter("GeneratedAnimations.txt", true);
+		foreach(string midFix in midFixes)
+		{
+			foreach (string weaponName in SATWeaponNames)
+			{
+				using StreamWriter GeneratedAnimations = new StreamWriter("GeneratedAnimations.txt", true);
 
-			foreach (string animation in T10WMAnimations)
-            {
-				foreach (string details in T10WMDetails)
+				foreach (string animation in T10WMAnimations)
 				{
-					foreach (string suffixType in T10WMSuffixes)
+					foreach (string details in T10WMDetails)
 					{
-						string stringedName = "sat_wm_" + weaponName + "_" + animation + details + suffixType;
-						string generatedHash = CalcHash64_v1(stringedName);
-
-						if (debugEnabled)
+						foreach (string suffixType in T10WMSuffixes)
 						{
-							Console.WriteLine(stringedName);
-						}
+							string stringedName = "sat_wm_" + weaponName + midFix + animation + details + suffixType;
+							string generatedHash = CalcHash64_v1(stringedName);
 
-						Parallel.ForEach(SATAnimationAssetLog, hash =>
-						{
-							if(hash == generatedHash)
+							if (debugEnabled)
 							{
-								string output = generatedHash + "," + stringedName;
-
-								lock(writeLock)
-								{
-									GeneratedAnimations.WriteLine(output);
-									Console.WriteLine(output);
-								}
+								Console.WriteLine(stringedName);
 							}
-						});
-					}
-                }
-            }
 
-            GeneratedAnimations.Flush();
-            GeneratedAnimations.Close();
-        }
+							Parallel.ForEach(SATAnimationAssetLog, hash =>
+							{
+								if(hash == generatedHash)
+								{
+									string output = generatedHash + "," + stringedName;
+
+									lock(writeLock)
+									{
+										GeneratedAnimations.WriteLine(output);
+										Console.WriteLine(output);
+									}
+								}
+							});
+						}
+					}
+				}
+
+				GeneratedAnimations.Flush();
+				GeneratedAnimations.Close();
+			}
+		}
     }
 
 	static void AnimPackages()
@@ -1880,32 +1899,35 @@ public class CODHashTool
                     {
                         Parallel.ForEach(WeaponSoundNames, soundName =>
                         {
-                            Parallel.ForEach(WeaponSoundSuffixes, weaponSoundSuffix =>
+                            foreach(string weaponSoundSuffix in WeaponSoundSuffixes)
                             {
-                                string stringedName = soundFolder + soundCategory + soundName;
-                                string generatedHash = CalcHash64_v1(stringedName + weaponSoundSuffix);
+								if (weaponSoundSuffix.Contains('*') == false)
+								{
+									string stringedName = soundFolder + soundCategory + soundName;
+									string generatedHash = CalcHash64_v1(stringedName + weaponSoundSuffix);
 
-                                if (debugEnabled)
-                                {
-                                    Console.WriteLine(stringedName + weaponSoundSuffix + " | " + generatedHash);
-                                }
+									if (debugEnabled)
+									{
+										Console.WriteLine(stringedName + weaponSoundSuffix + " | " + generatedHash);
+									}
 
-                                Parallel.ForEach(SoundAssetLog, hashedSound =>
-                                {
-                                    if (hashedSound == generatedHash)
-                                    {
-                                        stringedName = stringedName.Replace('/', '\\');
-
-                                        string output = generatedHash + "," + stringedName + weaponSoundSuffix;
-
-										lock(writeLock)
+									Parallel.ForEach(SoundAssetLog, hashedSound =>
+									{
+										if (hashedSound == generatedHash)
 										{
-											GeneratedSounds.WriteLine(output);
-											Console.WriteLine(output);
+											stringedName = stringedName.Replace('/', '\\');
+
+											string output = generatedHash + "," + stringedName + weaponSoundSuffix;
+
+											lock(writeLock)
+											{
+												GeneratedSounds.WriteLine(output);
+												Console.WriteLine(output);
+											}
 										}
-                                    }
-                                });
-                            });
+									});
+								}
+                            }
                         });
                     }
                 });
@@ -1914,7 +1936,92 @@ public class CODHashTool
 				GeneratedSounds.Close();
             }
         }
+    }
 
+	static void Soundbanks()
+    {
+		string game = PickGame(0);
+		game = game.ToLower();
+
+        Console.WriteLine("Generating Soundbanks:\n");
+
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Resident");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Transient");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Resident");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Transient");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank\Resident");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank\Transient");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\SATSndBank");
+        
+		string[] IW9Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Resident");
+        string[] IW9SoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Transient");
+        string[] JUPSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Resident");
+        string[] JUPSoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Transient");
+        string[] T10Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank\Resident");
+        string[] T10SoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank\Transient");
+		string[] SATSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\SATSndBank");
+
+		var Soundbanks = IW9Soundbanks.Union(IW9SoundbanksTR).ToArray();
+		Soundbanks = Soundbanks.Union(JUPSoundbanks).ToArray();
+		Soundbanks = Soundbanks.Union(JUPSoundbanksTR).ToArray();
+		Soundbanks = Soundbanks.Union(T10Soundbanks).ToArray();
+		Soundbanks = Soundbanks.Union(T10SoundbanksTR).ToArray();
+		Soundbanks = Soundbanks.Union(SATSoundbanks).ToArray();
+		 
+		string[] SoundbankSuffixes = File.ReadAllLines(@"cod-hash-tool-data\SoundBanks\SoundbankSuffixes.txt");
+		string[] weaponNames = File.ReadAllLines(@"cod-hash-tool-data\Shared\" + game + "WeaponNames.txt");
+
+		if(!File.Exists("GeneratedSoundbanks.txt"))
+		{
+			var file = File.Create("GeneratedSoundbanks.txt");
+			file.Close();
+		}
+
+		foreach(string weapon in weaponNames)
+        {
+			using StreamWriter GeneratedSoundbanks = new StreamWriter("GeneratedSoundbanks.txt", true);
+
+            Parallel.ForEach(Soundbanks, soundbank =>
+            {
+                if(soundbank.Contains("0x"))
+                {
+                    Parallel.ForEach(SoundbankSuffixes, soundBankSuffix =>
+                    {
+						string soundbankPath = soundbank.Substring(0, soundbank.LastIndexOf('\\') + 1);
+
+                        string soundbankHashed = soundbank.Substring(soundbank.LastIndexOf('\\') + 1);
+                        soundbankHashed = soundbankHashed.Replace("0x","");
+                        soundbankHashed = soundbankHashed.Replace(".json","");
+                        string stringedName = "weapon_" + game + "_" + weapon + soundBankSuffix;
+
+                        if(debugEnabled)
+                        {
+                            Console.WriteLine(stringedName + " | " + soundbankHashed);
+                        }
+
+                        if(CalcHash64_v1(stringedName) == soundbankHashed)
+                        {
+                            if(File.Exists(soundbankPath + "\\0x" + soundbankHashed + ".json"))
+                            {
+                                Console.WriteLine(soundbankHashed + " | " + stringedName);
+                                File.Move(soundbankPath + "\\0x" + soundbankHashed + ".json", soundbankPath + "\\" + stringedName + ".json");
+
+								string output = soundbankHashed + "," + stringedName;
+
+								lock(writeLock)
+								{
+									GeneratedSoundbanks.WriteLine(output);
+									Console.WriteLine(output);
+								}
+                            }
+                        }
+                    });
+                }
+            });
+
+			GeneratedSoundbanks.Flush();
+			GeneratedSoundbanks.Close();
+        }
     }
 
 	static void GenerateAnimationsLegacy()
@@ -2385,6 +2492,7 @@ public class CODHashTool
 		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Transient");
 		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank\Resident");
 		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank\Transient");
+		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\SATSndBank");
         
 		string[] IW9Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Resident");
         string[] IW9SoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank\Transient");
@@ -2392,12 +2500,14 @@ public class CODHashTool
         string[] JUPSoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSndBank\Transient");
         string[] T10Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank\Resident");
         string[] T10SoundbanksTR = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank\Transient");
+		string[] SATSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\SATSndBank");
 
 		var Soundbanks = IW9Soundbanks.Union(IW9SoundbanksTR).ToArray();
 		Soundbanks = Soundbanks.Union(JUPSoundbanks).ToArray();
 		Soundbanks = Soundbanks.Union(JUPSoundbanksTR).ToArray();
 		Soundbanks = Soundbanks.Union(T10Soundbanks).ToArray();
 		Soundbanks = Soundbanks.Union(T10SoundbanksTR).ToArray();
+		Soundbanks = Soundbanks.Union(SATSoundbanks).ToArray();
 		 
         string[] SoundbankNames = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Soundbanks.txt");
 		string[] SoundbankSuffixes = File.ReadAllLines(@"cod-hash-tool-data\SoundBanks\SoundbankSuffixes.txt");
@@ -2699,6 +2809,36 @@ public class CODHashTool
 			GeneratedSounds.Close();
         }
     }
+
+	static void AnimScanner()
+	{
+		Directory.CreateDirectory(@"cod-hash-tool-data\Animations\AnimScanner\AnimationsToScan");
+		Directory.CreateDirectory(@"cod-hash-tool-data\Animations\AnimScanner\FoundAnimations");
+
+		string[] animsToScan = Directory.GetFiles(@"cod-hash-tool-data\Animations\AnimScanner\AnimationsToScan");
+		string[] bonesToFind = File.ReadAllLines(@"cod-hash-tool-data\Animations\AnimScanner\BoneNames.txt");
+
+		foreach(string bone in bonesToFind)
+		{
+			Parallel.ForEach(animsToScan, anim =>
+			{
+				string text = File.ReadAllText(anim);
+
+				if(text.Contains(bone))
+				{
+					string animName = anim.Substring(anim.LastIndexOf('\\') + 1);
+					
+					lock(writeLock)
+					{
+						if(File.Exists(anim))
+						{
+							File.Copy(anim, @"cod-hash-tool-data\Animations\AnimScanner\FoundAnimations\" + animName);
+						}
+					}
+				}
+			});
+		}
+	}
 
 	static void Hasher()
 	{
