@@ -406,6 +406,12 @@ public class CODHashTool
 
 							break;
 						}
+						case "88":
+						{
+							GenerateBones();
+
+							break;
+						}
 						//MISCELLANIOUS
 						case "91":
 						{
@@ -2628,6 +2634,49 @@ public class CODHashTool
 
 			GeneratedAnimpackages.Flush();
 			GeneratedAnimpackages.Close();
+        }
+    }
+
+	static void GenerateBones()
+    {
+        Console.WriteLine("Generating Bones:\n");
+
+		string[] SATBones = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Bones.txt");
+        string[] BoneNames = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\Bones.txt");
+
+		if(!File.Exists("GeneratedBones.txt"))
+		{
+			var file = File.Create("GeneratedBones.txt");
+			file.Close();
+		}
+
+        foreach(string boneName in BoneNames)
+        {
+			using StreamWriter GeneratedBones = new StreamWriter("GeneratedBones.txt", true);
+
+			Parallel.ForEach(SATBones, SATBone =>
+			{
+				string stringedName = boneName.Replace("bone_","");
+
+				if(debugEnabled)
+				{
+					Console.WriteLine(SATBone + " | " + stringedName);
+				}
+
+				if(CalcHash64_v3(stringedName) == SATBone)
+				{
+					string output = SATBone + "," + stringedName;
+
+					lock(writeLock)
+					{
+						GeneratedBones.WriteLine(output);
+						Console.WriteLine(output);
+					}
+				}
+			});
+
+			GeneratedBones.Flush();
+			GeneratedBones.Close();
         }
     }
 
