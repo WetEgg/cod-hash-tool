@@ -90,9 +90,11 @@ public class CODHashTool
 
 					452 - Bullet Materials (T10/SAT)
 
-				48 - Scrape Material Endings
+				49 - Material Endings
+					
+					491 - Scrape Material Endings
 
-				49 - Get Model Materials from Material Endings
+					492 - Material Endings to Materials
 
 			5 - Models
 
@@ -298,6 +300,19 @@ public class CODHashTool
 						case "441":
 						{
 							OperatorMaterials();
+
+							break;
+						}
+						//MATERIAL ENDINGS
+						case "491":
+						{
+							ScrapeMaterialEndings();
+
+							break;
+						}
+						case "492":
+						{
+							MaterialEndingsToMaterials();
 
 							break;
 						}
@@ -1669,6 +1684,169 @@ public class CODHashTool
 		GeneratedMaterials.Flush();
 		GeneratedMaterials.Close();
     }
+
+	static void ScrapeMaterialEndings()
+    {
+        Console.WriteLine("Generating Material Endings:\n");
+
+		string[] ModelAssetLogT8 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T8\UnhashedModels.txt");
+		string[] ModelAssetLogT9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T9\UnhashedModels.txt");
+        string[] ModelAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\UnhashedModels.txt");
+		string[] ModelAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\UnhashedModels.txt");
+		string[] ModelAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\UnhashedModels.txt");
+		string[] ModelAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\UnhashedModels.txt");
+
+		var ModelAssetLog = ModelAssetLogT8.Union(ModelAssetLogT9).ToArray();
+		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogIW9).ToArray();
+		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogJUP).ToArray();
+		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogT10).ToArray();
+		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogSAT).ToArray();
+
+		string[] MaterialAssetLogT8 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T8\UnhashedMaterials.txt");
+		string[] MaterialAssetLogT9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T9\UnhashedMaterials.txt");
+		string[] MaterialAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\UnhashedMaterials.txt");
+		string[] MaterialAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\UnhashedMaterials.txt");
+		string[] MaterialAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\UnhashedMaterials.txt");
+		string[] MaterialAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\UnhashedMaterials.txt");
+
+		var MaterialAssetLog = MaterialAssetLogT8.Union(MaterialAssetLogT9).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogIW9).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogJUP).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogT10).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogSAT).ToArray();
+
+        if (!File.Exists(@"cod-hash-tool-data\Materials\MaterialEndings.txt"))
+        {
+            var file = File.Create(@"cod-hash-tool-data\Materials\MaterialEndings.txt");
+            file.Close();
+        }
+
+        using StreamWriter GeneratedHashesMaterials = new StreamWriter(@"cod-hash-tool-data\Materials\MaterialEndings.txt", true);
+
+        Parallel.ForEach(ModelAssetLog, model =>
+        {
+            Parallel.ForEach(MaterialAssetLog, material =>
+            {
+                if (material.Contains("/" + model + "_"))
+                {
+                    string stringedName = material;
+
+                    if (material.Contains('/'))
+                    {
+                        stringedName = material.Substring(material.IndexOf('/') + 1);
+                    }
+
+					if (model.Contains('/'))
+                    {
+                        model = model.Substring(model.IndexOf('/') + 1);
+                    }
+
+					if (model.Contains("::"))
+                    {
+                        model = model.Substring(model.IndexOf("::") + 1);
+                    }
+
+                    string output = stringedName.Substring(model.Length);
+                    output = output.Replace(model, "");
+					output = output.Substring(1);
+
+					if(debugEnabled)
+					{
+						Console.WriteLine(output);
+					}
+
+					lock(writeLock)
+					{
+						GeneratedHashesMaterials.WriteLine(output);
+					}
+                }
+            });
+        });
+
+		GeneratedHashesMaterials.Flush();
+		GeneratedHashesMaterials.Close();
+    }
+
+	static void MaterialEndingsToMaterials()
+	{
+		Console.WriteLine("Generating Model hashes from Material Endings:\n");
+
+        string[] ModelAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\UnhashedModels.txt");
+		string[] ModelAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\UnhashedModels.txt");
+		string[] ModelAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\UnhashedModels.txt");
+		string[] ModelAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\UnhashedModels.txt");
+
+		var ModelAssetLog = ModelAssetLogIW9.Union(ModelAssetLogJUP).ToArray();
+		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogT10).ToArray();
+		ModelAssetLog = ModelAssetLog.Union(ModelAssetLogSAT).ToArray();
+
+		string[] MaterialAssetLogIW9 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Materials.txt");
+		string[] MaterialAssetLogJUP = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Materials.txt");
+		string[] MaterialAssetLogT10 = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Materials.txt");
+		string[] MaterialAssetLogSAT = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Materials.txt");
+
+		var MaterialAssetLog = MaterialAssetLogIW9.Union(MaterialAssetLogJUP).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogT10).ToArray();
+		MaterialAssetLog = MaterialAssetLog.Union(MaterialAssetLogSAT).ToArray();
+
+        string[] MaterialEndings = File.ReadAllLines(@"cod-hash-tool-data\Materials\MaterialEndings.txt");
+        //string[] MaterialFolders = File.ReadAllLines(@"cod-hash-tool-data\Materials\MaterialFolderNames.txt");
+		string[] MaterialFolders = {"m/","mc/","mo/"};
+
+		if (!File.Exists("GeneratedMaterials.txt"))
+        {
+            var file = File.Create("GeneratedMaterials.txt");
+            file.Close();
+        }
+
+        foreach (string materialEnding in MaterialEndings)
+        {
+			Console.WriteLine(materialEnding);
+
+            using StreamWriter GeneratedHashesMaterials = new StreamWriter("GeneratedMaterials.txt", true);
+
+			Parallel.ForEach(MaterialFolders, materialFolder =>
+			{
+				Parallel.ForEach(ModelAssetLog, model =>
+				{
+					if (model.Contains('/'))
+					{
+						model = model.Substring(model.IndexOf('/') + 1);
+					}
+
+					if (model.Contains("::"))
+					{
+						model = model.Substring(model.IndexOf("::") + 1);
+					}
+
+					string stringedName = materialFolder + "mtl_" + model + "_" + materialEnding;
+					string generatedHash = CalcHash64_v1(stringedName);
+
+					if (debugEnabled)
+					{
+						Console.WriteLine(stringedName);
+					}
+
+					Parallel.ForEach(MaterialAssetLog, hashedAsset =>
+					{
+						if (generatedHash == hashedAsset)
+						{
+							string output = generatedHash + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedHashesMaterials.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+				});
+			});
+
+            GeneratedHashesMaterials.Flush();
+            GeneratedHashesMaterials.Close();
+		}
+	}
 
 	static void IW9WeaponSounds()
     {
