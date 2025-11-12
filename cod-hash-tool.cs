@@ -124,31 +124,31 @@ public class CODHashTool
 
 					811 - Generate Animations (T8/T9)
 
-					812 - Generate Animations (IW9/JUP/T10)
+					812 - Generate Animations (IW9/JUP/T10/SAT)
 
 				82 - Generate Images
 
 					821 - Generate Images (T8/T9)
 
-					822 - Generate Images (IW9/JUP/T10)
+					822 - Generate Images (IW9/JUP/T10/SAT)
 
 				83 - Generate Materials
 
 					831 - Generate Materials (T8/T9)
 
-					832 - Generate Materials (IW9/JUP/T10)
+					832 - Generate Materials (IW9/JUP/T10/SAT)
 
 				84 - Generate Models
 
 					841 - Generate Models (T8/T9)
 
-					842 - Generate Models (IW9/JUP/T10)
+					842 - Generate Models (IW9/JUP/T10/SAT)
 
 				85 - Generate Sounds
 
 					851 - Generate Sounds (T8/T9)
 
-					852 - Generate Sounds (IW9/JUP/T10)
+					852 - Generate Sounds (IW9/JUP/T10/SAT)
 
 				86 - Generate Soundbanks
 
@@ -2151,15 +2151,10 @@ public class CODHashTool
 
         Console.WriteLine("Generating Soundbanks:\n");
 
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\IW9SndBank");
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\JUPSndBank");
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank");
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\SATSndBank");
-        
-		string[] IW9Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank");
-        string[] JUPSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSndBank");
-        string[] T10Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank");
-		string[] SATSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\SATSndBank");
+		string[] IW9Soundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Soundbanks.txt");
+        string[] JUPSoundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Soundbanks.txt");
+        string[] T10Soundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Soundbanks.txt");
+		string[] SATSoundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Soundbanks.txt");
 
 		var Soundbanks = IW9Soundbanks.Union(JUPSoundbanks).ToArray();
 		Soundbanks = Soundbanks.Union(T10Soundbanks).ToArray();
@@ -2180,15 +2175,9 @@ public class CODHashTool
 
             Parallel.ForEach(Soundbanks, soundbank =>
             {
-                if(soundbank.Contains("sndbank_"))
-                {
                     Parallel.ForEach(SoundbankSuffixes, soundBankSuffix =>
                     {
-						string soundbankPath = soundbank.Substring(0, soundbank.LastIndexOf('\\') + 1);
-
-                        string soundbankHashed = soundbank.Substring(soundbank.LastIndexOf('\\') + 1);
-                        soundbankHashed = soundbankHashed.Replace("sndbank_","");
-                        soundbankHashed = soundbankHashed.Replace(".csv","");
+                        string soundbankHashed = soundbank.Replace("sndbank_","");
                         string stringedName = "weapon_" + game + "_" + weapon + soundBankSuffix;
 
                         if(debugEnabled)
@@ -2198,22 +2187,15 @@ public class CODHashTool
 
                         if(CalcHash64_v1(stringedName) == soundbankHashed)
                         {
-                            if(File.Exists(soundbankPath + "\\sndbank_" + soundbankHashed + ".csv"))
-                            {
-                                Console.WriteLine(soundbankHashed + " | " + stringedName);
-                                File.Move(soundbankPath + "\\sndbank_" + soundbankHashed + ".csv", soundbankPath + "\\" + stringedName + ".csv");
+							string output = soundbankHashed + "," + stringedName;
 
-								string output = soundbankHashed + "," + stringedName;
-
-								lock(writeLock)
-								{
-									GeneratedSoundbanks.WriteLine(output);
-									Console.WriteLine(output);
-								}
-                            }
+							lock(writeLock)
+							{
+								GeneratedSoundbanks.WriteLine(output);
+								Console.WriteLine(output);
+							}
                         }
                     });
-                }
             });
 
 			GeneratedSoundbanks.Flush();
@@ -2683,15 +2665,10 @@ public class CODHashTool
     {
         Console.WriteLine("Generating Soundbanks:\n");
 
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\IW9SndBank");
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\JUPSndBank");
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\T10SndBank");
-		Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\SATSndBank");
-        
-		string[] IW9Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9SndBank");
-        string[] JUPSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSndBank");
-        string[] T10Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10SndBank");
-		string[] SATSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\SATSndBank");
+		string[] IW9Soundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\Soundbanks.txt");
+        string[] JUPSoundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\Soundbanks.txt");
+        string[] T10Soundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\Soundbanks.txt");
+		string[] SATSoundbanks = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\Soundbanks.txt");
 
 		var Soundbanks = IW9Soundbanks.Union(JUPSoundbanks).ToArray();
 		Soundbanks = Soundbanks.Union(T10Soundbanks).ToArray();
@@ -2712,40 +2689,28 @@ public class CODHashTool
 
             Parallel.ForEach(Soundbanks, soundbank =>
             {
-                if(soundbank.Contains("\\sndbank_"))
+         
+                Parallel.ForEach(SoundbankSuffixes, soundBankSuffix =>
                 {
-                    Parallel.ForEach(SoundbankSuffixes, soundBankSuffix =>
+                    string soundbankHashed = soundbank.Replace("sndbank_","");
+                    string stringedName = soundbankName + soundBankSuffix;
+
+                    if(debugEnabled)
                     {
-						string soundbankPath = soundbank.Substring(0, soundbank.LastIndexOf('\\') + 1);
+                        Console.WriteLine(stringedName + " | " + soundbankHashed);
+                    }
 
-                        string soundbankHashed = soundbank.Substring(soundbank.LastIndexOf('\\') + 1);
-                        soundbankHashed = soundbankHashed.Replace("sndbank_","");
-                        soundbankHashed = soundbankHashed.Replace(".csv","");
-                        string stringedName = soundbankName + soundBankSuffix;
+                    if(CalcHash64_v1(stringedName) == soundbankHashed)
+                    {
+						lock(writeLock)
+						{
+							string output = soundbankHashed + "," + stringedName;
 
-                        if(debugEnabled)
-                        {
-                            Console.WriteLine(stringedName + " | " + soundbankHashed);
-                        }
-
-                        if(CalcHash64_v1(stringedName) == soundbankHashed)
-                        {
-                            if(File.Exists(soundbankPath + "\\sndbank_" + soundbankHashed + ".csv"))
-                            {
-                                Console.WriteLine(soundbankHashed + " | " + stringedName);
-                                File.Move(soundbankPath + "\\sndbank_" + soundbankHashed + ".csv", soundbankPath + "\\" + stringedName + ".csv");
-
-								string output = soundbankHashed + "," + stringedName;
-
-								lock(writeLock)
-								{
-									GeneratedSoundbanks.WriteLine(output);
-									Console.WriteLine(output);
-								}
-                            }
-                        }
-                    });
-                }
+							GeneratedSoundbanks.WriteLine(output);
+							Console.WriteLine(output);
+						}
+                    }
+                });
             });
 
 			GeneratedSoundbanks.Flush();
@@ -2885,6 +2850,9 @@ public class CODHashTool
         using StreamWriter SoundAssetLog = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\Sounds.txt");
         using StreamWriter SoundAssetLogUnhashed = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\UnhashedSounds.txt");
 
+		using StreamWriter SoundBankAssetLog = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\Soundbanks.txt");
+        using StreamWriter SoundBankAssetLogUnhashed = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\UnhashedSoundbanks.txt");
+
         foreach(string hash in AssetLog)
         {
             string assetType = hash.Substring(0, hash.IndexOf(','));
@@ -2956,6 +2924,23 @@ public class CODHashTool
                         //Unhashed Models
                         result = hash.Replace("Model,", "");
                         ModelAssetLogUnhashed.WriteLine(result);
+                    }
+
+                    break;
+                }
+				case "SndBank":
+                {
+                    if (hash.Contains("SndBank,sndbank_"))
+                    {
+                        //Hashed Sounds
+                        result = hash.Replace("SndBank,sndbank_","");
+                        SoundBankAssetLog.WriteLine(result);
+                    }
+                    else
+                    {
+                        //Unhashed Sounds
+                        result = hash.Replace("SndBank,","");
+                        SoundBankAssetLogUnhashed.WriteLine(result);
                     }
 
                     break;
