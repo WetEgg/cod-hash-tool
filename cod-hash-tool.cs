@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 public class CODHashTool
@@ -114,9 +116,21 @@ public class CODHashTool
 
 				71 - Soundbank Names
 
-				72 - Manual Soundbank Naming
+				721 - IW9 Weapon Aliases (NOT IMPLEMENTED)
 
-				73 - Soundbank Aliases
+				722 - JUP Weapon Aliases (NOT IMPLEMENTED)
+
+				723 - T10 Weapon Aliases
+
+				724 - SAT Weapon Aliases
+
+				76 - Manual Soundbank Naming
+
+				77 - Soundbank Aliases
+
+				79 - Misc Soundbank Operations
+
+					791 - Convert IW7 Aliases to T7 Aliases
 
 			8 - Generate Found Names
 
@@ -156,23 +170,33 @@ public class CODHashTool
 
 				88 - Generate Bones
 
+				89 - Generate Sound Aliases
+
 			9 - Miscellanious
 
 				91 - Split AssetLogs
 
 				92 - Asset Exports
 
-				93 - Speaker JSONS
+				93 - List Speaker Sounds
 
-				94 - Grab Sounds
+				94 - Grab Speaker Sounds
 
 				95 - Sound Guesser
+
+				96 - Sound Alias Scraper
 
 				97 - Find Anims from Bone Name
 
 				98 - Hasher
 
 				99 - Toggle Debug Printing
+
+				091 - Text Tools (RIP MyTextTools.com)
+				
+					0911 - Remove Duplicates
+
+					0912 - Remove lines containing/not containing phrase
 			");
 
 			Console.WriteLine("\nDebug = " + (debugEnabled.ToString()).ToUpper());
@@ -348,6 +372,24 @@ public class CODHashTool
 
 							break;
 						}
+						case "723":
+						{ 
+							T10WeaponAliases();
+
+							break;
+						}
+						case "724":
+						{
+							SATWeaponAliases();
+
+							break;
+						}
+						case "791":
+						{
+							ConvertIW7ToT7Aliases();
+
+							break;
+						}
 						//GENERATE FOUND NAMES
 						case "811":
 						{
@@ -427,6 +469,12 @@ public class CODHashTool
 
 							break;
 						}
+						case "89":
+						{
+							GenerateSoundAliases();
+
+							break;
+						}
 						//MISCELLANIOUS
 						case "91":
 						{
@@ -434,9 +482,27 @@ public class CODHashTool
 
 							break;
 						}
+						case "93":
+						{
+							ListSpeakerSounds();
+
+							break;
+						}
+						case "94":
+						{
+							GrabSpeakerSounds();
+
+							break;
+						}
 						case "95":
 						{
 							SoundGuesser();
+
+							break;
+						}
+						case "96":
+						{
+							SoundAliasGatherer();
 
 							break;
 						}
@@ -456,6 +522,18 @@ public class CODHashTool
 						case "99":
 						{
 							debugEnabled = debugEnabled ? debugEnabled = false : debugEnabled = true;
+
+							break;
+						}
+						case "0911":
+						{
+							RemoveDuplicates();
+
+							break;
+						}
+						case "0912":
+						{
+							RemoveLines();
 
 							break;
 						}
@@ -1113,50 +1191,61 @@ public class CODHashTool
 
         Console.WriteLine("Unhashing Animpackage Names:\n");
 
-        string[] Weapons = File.ReadAllLines(@"cod-hash-tool-data\Shared\WeaponNames.txt");
-        string[] AnimPackages = Directory.GetFiles(@"cod-hash-tool-data\AnimPackages\" + game);
-        string[] AnimPackageVariantNames = File.ReadAllLines(@"cod-hash-tool-data\AnimPackages\AnimPackageVariantNames.txt");
+		string[] IW9AnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\AnimPackages.txt");
+		string[] JUPAnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\AnimPackages.txt");
+		string[] T10AnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\AnimPackages.txt");
+		string[] SATAnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\AnimPackages.txt");
 
+		var AnimPackages = IW9AnimPackages.Union(JUPAnimPackages).ToArray();
+		AnimPackages = AnimPackages.Union(T10AnimPackages).ToArray();
+		AnimPackages = AnimPackages.Union(SATAnimPackages).ToArray();
+
+        string[] Weapons = File.ReadAllLines(@"cod-hash-tool-data\Shared\WeaponNames.txt");
+        string[] AnimPackageVariantNames = File.ReadAllLines(@"cod-hash-tool-data\AnimPackages\AnimPackageVariantNames.txt");
 		string[] midfixes = {"_animpackage","_default_animpackage"};
-		string[] games = {"sat","t10","iw9","jup"};
+
+		if(!File.Exists("GeneratedAnimpackages.txt"))
+		{
+			var file = File.Create("GeneratedAnimpackages.txt");
+			file.Close();
+		}
+
+		using StreamWriter GeneratedAnimpackages = new StreamWriter("GeneratedAnimpackages.txt", true);
 
         Parallel.ForEach(AnimPackages, animpackage =>
         {
-            if (animpackage.Contains(game + @"\0x"))
+			string animpackageHashed = animpackage.Replace(".json", "");
+
+            foreach (string weapon in Weapons)
             {
-				string animpackageHashed = animpackage.Substring(animpackage.LastIndexOf('\\') + 1);
-				animpackageHashed = animpackageHashed.Replace("0x", "");
-				animpackageHashed = animpackageHashed.Replace(".json", "");
-
-                foreach (string weapon in Weapons)
-                {
-					foreach(string midfix in midfixes)
+				foreach(string midfix in midfixes)
+				{
+					Parallel.ForEach(AnimPackageVariantNames, animpackageSuffix =>
 					{
-						Parallel.ForEach(games, gameName =>
+						string stringedName = game + "_" + weapon + midfix + animpackageSuffix;
+
+						if (debugEnabled)
 						{
-							Parallel.ForEach(AnimPackageVariantNames, animpackageSuffix =>
+							Console.WriteLine(stringedName + " | " + animpackageHashed);
+						}
+
+						if (CalcHash64_v1(stringedName) == animpackageHashed)
+						{
+							string output = animpackageHashed + "," + stringedName;
+								
+							lock(writeLock)
 							{
-								string stringedName = gameName + "_" + weapon + midfix + animpackageSuffix;
-
-								if (debugEnabled)
-								{
-									Console.WriteLine(stringedName + " | " + animpackageHashed);
-								}
-
-								if (CalcHash64_v1(stringedName) == animpackageHashed)
-								{
-									if (File.Exists(@"cod-hash-tool-data\AnimPackages\" + game + @"\0x" + animpackageHashed + ".json"))
-									{
-										Console.WriteLine(animpackageHashed + " | " + stringedName);
-										File.Move(@"cod-hash-tool-data\AnimPackages\" + game + @"\0x" + animpackageHashed + ".json", @"cod-hash-tool-data\AnimPackages\" + game + @"\" + stringedName + ".json");
-									}
-								}
-							});
-						});
-					}
-                }
+								GeneratedAnimpackages.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+				}
             }
         });
+
+		GeneratedAnimpackages.Flush();
+		GeneratedAnimpackages.Close();
     }
 
 	static void TexturesFromMaterialNamesLegacy()
@@ -2203,6 +2292,246 @@ public class CODHashTool
         }
     }
 
+	static void IW9WeaponAliases()
+	{
+		Console.WriteLine("Generating IW9 Weapon Aliases:\n");
+
+		string[] IW9WeaponNames = File.ReadAllLines(@"cod-hash-tool-data/Shared/IW9WeaponNames.txt");
+		string[] SoundAliases = File.ReadAllLines(@"cod-hash-tool-data/AssetLogs/SoundAliases.txt");
+
+		string[] AliasNames = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasNames.txt");
+		string[] AliasStarts = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasStarts.txt");
+
+		if(!File.Exists("GeneratedSoundAliases.txt"))
+		{
+			var file = File.Create("GeneratedSoundAliases.txt");
+			file.Close();
+		}
+
+		foreach(string weapon in IW9WeaponNames)
+		{
+			string noPlatWeapon = weapon.Substring(4);
+			using StreamWriter GeneratedSoundAliases = new StreamWriter("GeneratedSoundAliases.txt", true);
+
+			Parallel.ForEach(AliasNames, aliasName =>
+			{
+				Parallel.ForEach(AliasStarts, aliasStart =>
+				{
+					string stringedName = aliasStart + noPlatWeapon + "_" + aliasName;
+
+					Parallel.ForEach(SoundAliases, alias =>
+					{
+						if(debugEnabled)
+						{
+							Console.WriteLine(alias + " | " + stringedName);
+						}
+
+						if(CalcHash64_v3(stringedName) == alias)
+						{
+							string output = alias + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedSoundAliases.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+				});
+			});
+
+			GeneratedSoundAliases.Flush();
+			GeneratedSoundAliases.Close();
+		}
+	}
+
+	static void JUPWeaponAliases()
+	{
+		Console.WriteLine("Generating JUP Weapon Aliases:\n");
+
+		string[] JUPWeaponNames = File.ReadAllLines(@"cod-hash-tool-data/Shared/JUPWeaponNames.txt");
+		string[] SoundAliases = File.ReadAllLines(@"cod-hash-tool-data/AssetLogs/SoundAliases.txt");
+
+		string[] AliasNames = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasNames.txt");
+		string[] AliasStarts = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasStarts.txt");
+
+		if(!File.Exists("GeneratedSoundAliases.txt"))
+		{
+			var file = File.Create("GeneratedSoundAliases.txt");
+			file.Close();
+		}
+
+		foreach(string weapon in JUPWeaponNames)
+		{
+			string noPlatWeapon = weapon.Substring(4);
+			using StreamWriter GeneratedSoundAliases = new StreamWriter("GeneratedSoundAliases.txt", true);
+
+			Parallel.ForEach(AliasNames, aliasName =>
+			{
+				Parallel.ForEach(AliasStarts, aliasStart =>
+				{
+					string stringedName = aliasStart + noPlatWeapon + "_" + aliasName;
+
+					Parallel.ForEach(SoundAliases, alias =>
+					{
+						if(debugEnabled)
+						{
+							Console.WriteLine(alias + " | " + stringedName);
+						}
+
+						if(CalcHash64_v3(stringedName) == alias)
+						{
+							string output = alias + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedSoundAliases.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+				});
+			});
+
+			GeneratedSoundAliases.Flush();
+			GeneratedSoundAliases.Close();
+		}
+	}
+
+	static void T10WeaponAliases()
+	{
+		Console.WriteLine("Generating T10 Weapon Aliases:\n");
+
+		string[] T10WeaponNames = File.ReadAllLines(@"cod-hash-tool-data/Shared/T10WeaponNames.txt");
+		string[] SoundAliases = File.ReadAllLines(@"cod-hash-tool-data/AssetLogs/SoundAliases.txt");
+
+		string[] AliasNames = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasNames.txt");
+		string[] AliasStarts = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasStarts.txt");
+
+		if(!File.Exists("GeneratedSoundAliases.txt"))
+		{
+			var file = File.Create("GeneratedSoundAliases.txt");
+			file.Close();
+		}
+
+		foreach(string weapon in T10WeaponNames)
+		{
+			string noPlatWeapon = weapon.Substring(4);
+			using StreamWriter GeneratedSoundAliases = new StreamWriter("GeneratedSoundAliases.txt", true);
+
+			Parallel.ForEach(AliasNames, aliasName =>
+			{
+				Parallel.ForEach(AliasStarts, aliasStart =>
+				{
+					string stringedName = aliasStart + noPlatWeapon + "_" + aliasName;
+
+					Parallel.ForEach(SoundAliases, alias =>
+					{
+						if(debugEnabled)
+						{
+							Console.WriteLine(alias + " | " + stringedName);
+						}
+
+						if(CalcHash64_v3(stringedName) == alias)
+						{
+							string output = alias + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedSoundAliases.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+				});
+			});
+
+			GeneratedSoundAliases.Flush();
+			GeneratedSoundAliases.Close();
+		}
+	}
+
+	static void SATWeaponAliases()
+	{
+		Console.WriteLine("Generating SAT Weapon Aliases:\n");
+
+		string[] SATWeaponNames = File.ReadAllLines(@"cod-hash-tool-data/Shared/SATWeaponNames.txt");
+		string[] SoundAliases = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SoundAliases.txt");
+
+		string[] AliasNames = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasNames.txt");
+		string[] AliasStarts = File.ReadAllLines(@"cod-hash-tool-data/Soundbanks/AliasStarts.txt");
+
+		if(!File.Exists("GeneratedSoundAliases.txt"))
+		{
+			var file = File.Create("GeneratedSoundAliases.txt");
+			file.Close();
+		}
+
+		foreach(string weapon in SATWeaponNames)
+		{
+			using StreamWriter GeneratedSoundAliases = new StreamWriter("GeneratedSoundAliases.txt", true);
+
+			Parallel.ForEach(AliasNames, aliasName =>
+			{
+				Parallel.ForEach(AliasStarts, aliasStart =>
+				{
+					string stringedName = aliasStart + weapon + "_" + aliasName;
+
+					Parallel.ForEach(SoundAliases, alias =>
+					{
+						if(debugEnabled)
+						{
+							Console.WriteLine(alias + " | " + stringedName);
+						}
+
+						if(CalcHash64_v3(stringedName) == alias)
+						{
+							string output = alias + "," + stringedName;
+
+							lock(writeLock)
+							{
+								GeneratedSoundAliases.WriteLine(output);
+								Console.WriteLine(output);
+							}
+						}
+					});
+				});
+			});
+
+			GeneratedSoundAliases.Flush();
+			GeneratedSoundAliases.Close();
+		}
+	}
+
+	static void ConvertIW7ToT7Aliases()
+	{
+		Console.WriteLine("Converting IW7 Aliases To T7:\n");
+
+		string[] IW7Soundbanks = Directory.GetFiles(@"cod-hash-tool-data/Soundbanks/IW7Soundbanks");
+		
+		foreach(string file in IW7Soundbanks)
+		{
+			var newAliasFile = File.Create(file + "T7Version.csv");
+			newAliasFile.Close();
+
+			using StreamWriter newAliasFileStream = new StreamWriter(file + "T7Version.csv", true);
+
+			string[] aliases = File.ReadAllLines(file);
+
+			newAliasFileStream.WriteLine("Name,Behavior,Storage,FileSpec,FileSpecSustain,FileSpecRelease,Template,Loadspec,Secondary,SustainAlias,ReleaseAlias,Bus,VolumeGroup,DuckGroup,Duck,ReverbSend,CenterSend,VolMin,VolMax,DistMin,DistMaxDry,DistMaxWet,DryMinCurve,DryMaxCurve,WetMinCurve,WetMaxCurve,LimitCount,LimitType,EntityLimitCount,EntityLimitType,PitchMin,PitchMax,PriorityMin,PriorityMax,PriorityThresholdMin,PriorityThresholdMax,AmplitudePriority,PanType,Pan,Futz,Looping,RandomizeType,Probability,StartDelay,EnvelopMin,EnvelopMax,EnvelopPercent,OcclusionLevel,IsBig,DistanceLpf,FluxType,FluxTime,Subtitle,Doppler,ContextType,ContextValue,ContextType1,ContextValue1,ContextType2,ContextValue2,ContextType3,ContextValue3,Timescale,IsMusic,IsCinematic,FadeIn,FadeOut,Pauseable,StopOnEntDeath,Compression,StopOnPlay,DopplerScale,FutzPatch,VoiceLimit,IgnoreMaxDist,NeverPlayTwice,ContinuousPan,FileSource,FileSourceSustain,FileSourceRelease,FileTarget,FileTargetSustain,FileTargetRelease,Platform,Language,OutputDevices,PlatformMask,WiiUMono,StopAlias,DistanceLpfMin,DistanceLpfMax,FacialAnimationName,RestartContextLoops,SilentInCPZ,ContextFailsafe,GPAD,GPADOnly,MuteVoice,MuteMusic,RowSourceFileName,RowSourceShortName,RowSourceLineNumber");
+
+			foreach(string alias in aliases)
+			{
+				string[] aliasSettings = alias.Split(',');
+
+				newAliasFileStream.WriteLine(aliasSettings[0] + ",,," + aliasSettings[4] + ",,,," + aliasSettings[15] + "," + aliasSettings[1] + ",,,,,," + aliasSettings[46] + ",," + aliasSettings[28] + "," + aliasSettings[5] + "," + aliasSettings[6] + "," + aliasSettings[11] + "," + aliasSettings[12] + "," + aliasSettings[12] + ",,,,,,,,," + aliasSettings[8] + "," + aliasSettings[9] + ",,,,,,,,," + aliasSettings[16] + ",," + aliasSettings[17] + "," + aliasSettings[22] + "," + aliasSettings[29] + "," + aliasSettings[30] + "," + aliasSettings[31] + ",,,,,," + aliasSettings[3] + "," + aliasSettings[35] + "," + aliasSettings[43] + "," + aliasSettings[44] + ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,," + aliasSettings[2] + ",,,,,,," + aliasSettings[48] + ",,,,,,");
+			}
+
+			newAliasFileStream.Flush();
+			newAliasFileStream.Close();
+		}
+	}
+
 	static void GenerateAnimationsLegacy()
     {
         Console.WriteLine("Generating Animations:\n");
@@ -2726,12 +3055,14 @@ public class CODHashTool
 		Directory.CreateDirectory(@"cod-hash-tool-data\AnimPackages\JUPAnimPkg");
 		Directory.CreateDirectory(@"cod-hash-tool-data\AnimPackages\T10AnimPkg");
 
-		string[] IW9AnimPackages = Directory.GetFiles(@"cod-hash-tool-data\AnimPackages\IW9AnimPkg");
-        string[] JUPAnimPackages = Directory.GetFiles(@"cod-hash-tool-data\AnimPackages\JUPAnimPkg");
-        string[] T10AnimPackages = Directory.GetFiles(@"cod-hash-tool-data\AnimPackages\T10AnimPkg");
+		string[] IW9AnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\IW9\AnimPackages.txt");
+		string[] JUPAnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\JUP\AnimPackages.txt");
+		string[] T10AnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\T10\AnimPackages.txt");
+		string[] SATAnimPackages = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SAT\AnimPackages.txt");
 
 		var AnimPackages = IW9AnimPackages.Union(JUPAnimPackages).ToArray();
 		AnimPackages = AnimPackages.Union(T10AnimPackages).ToArray();
+		AnimPackages = AnimPackages.Union(SATAnimPackages).ToArray();
 
         string[] AnimPackageNames = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\AnimPackages.txt");
 
@@ -2747,35 +3078,22 @@ public class CODHashTool
 
             Parallel.ForEach(AnimPackages, animpackage =>
             {
-                if(animpackage.Contains("AnimPkg\\0x"))
+                string animpackageHashed = animpackage.Replace(".json","");
+
+                if(debugEnabled)
                 {
-					string animpackagePath = animpackage.Substring(0, animpackage.LastIndexOf('\\') + 1);
+                    Console.WriteLine(animpackageName + " | " + animpackageHashed);
+                }
 
-                    string animpackageHashed =  animpackage.Substring(animpackage.LastIndexOf('\\') + 1);
-                    animpackageHashed = animpackageHashed.Replace("0x","");
-                    animpackageHashed = animpackageHashed.Replace(".json","");
+                if(CalcHash64_v1(animpackageName) == animpackageHashed)
+                {
+					string output = animpackageHashed + "," + animpackageName;
 
-                    if(debugEnabled)
-                    {
-                        Console.WriteLine(animpackageName + " | " + animpackageHashed);
-                    }
-
-                    if(CalcHash64_v1(animpackageName) == animpackageHashed)
-                    {
-                        if(File.Exists(animpackagePath + "\\0x" + animpackageHashed + ".json"))
-                        {
-                            Console.WriteLine(animpackageHashed + " | " + animpackageName);
-                            File.Move(animpackagePath + "\\0x" + animpackageHashed + ".json", animpackagePath + "\\" + animpackageName + ".json");
-
-							string output = animpackageHashed + "," + animpackageName;
-
-							lock(writeLock)
-							{
-								GeneratedAnimpackages.WriteLine(output);
-								Console.WriteLine(output);
-							}
-                        }
-                    }
+					lock(writeLock)
+					{
+						GeneratedAnimpackages.WriteLine(output);
+						Console.WriteLine(output);
+					}
                 }
             });
 
@@ -2827,6 +3145,47 @@ public class CODHashTool
         }
     }
 
+	static void GenerateSoundAliases()
+	{
+		Console.WriteLine("Generating Sound Aliases:\n");
+
+		string[] aliases = File.ReadAllLines(@"cod-hash-tool-data\AssetLogs\SoundAliases.txt");
+        string[] aliasNames = File.ReadAllLines(@"cod-hash-tool-data\FoundAssetNames\SoundAliases.txt");
+
+		if(!File.Exists("GeneratedSoundAliases.txt"))
+		{
+			var file = File.Create("GeneratedSoundAliases.txt");
+			file.Close();
+		}
+
+        foreach(string aliasName in aliasNames)
+        {
+			using StreamWriter GeneratedSoundAliases = new StreamWriter("GeneratedSoundAliases.txt", true);
+
+			Parallel.ForEach(aliases, alias =>
+			{
+				if(debugEnabled)
+				{
+					Console.WriteLine(alias + " | " + aliasName);
+				}
+
+				if(CalcHash64_v3(aliasName) == alias)
+				{
+					string output = alias + "," + aliasName;
+
+					lock(writeLock)
+					{
+						GeneratedSoundAliases.WriteLine(output);
+						Console.WriteLine(output);
+					}
+				}
+			});
+
+			GeneratedSoundAliases.Flush();
+			GeneratedSoundAliases.Close();
+        }
+	}
+
 	static void SplitAssetLogs()
     {
         string game = PickGame(0);
@@ -2837,6 +3196,9 @@ public class CODHashTool
 
         using StreamWriter AnimationAssetLog = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\Animations.txt");
         using StreamWriter AnimationAssetLogUnhashed = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\UnhashedAnimations.txt");
+
+		using StreamWriter AnimPackageAssetLog = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\AnimPackages.txt");
+        using StreamWriter AnimPackageAssetLogUnhashed = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\UnhashedAnimPackages.txt");
 
         using StreamWriter ImageAssetLog = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\Images.txt");
         using StreamWriter ImageAssetLogUnhashed = new StreamWriter(@"cod-hash-tool-data\AssetLogs\" + game + "\\UnhashedImages.txt");
@@ -2873,6 +3235,23 @@ public class CODHashTool
                         //Unhashed Animations
                         result = hash.Replace("Animation,", "");
                         AnimationAssetLogUnhashed.WriteLine(result);
+                    }
+
+                    break;
+                }
+				case "AnimPkg":
+                {
+                    if (hash.Contains("AnimPkg,animpkg_"))
+                    {
+                        //Hashed Animations
+                        result = hash.Replace("AnimPkg,animpkg_", "");
+                        AnimPackageAssetLog.WriteLine(result);
+                    }
+                    else
+                    {
+                        //Unhashed Animations
+                        result = hash.Replace("AnimPkg,", "");
+                        AnimPackageAssetLogUnhashed.WriteLine(result);
                     }
 
                     break;
@@ -2966,7 +3345,131 @@ public class CODHashTool
         }
     }
 
-	 static void SoundGuesser()
+	static void ListSpeakerSounds()
+	{
+        string[] SATSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\SATSoundbanks");
+		string soundName = "";
+		string contentName = "";
+		string speakerName = "";
+		
+		if(!File.Exists(@"cod-hash-tool-data\SoundBanks\SpeakerLines.txt"))
+        {
+            var file = File.Create(@"cod-hash-tool-data\SoundBanks\SpeakerLines.txt");
+            file.Close();
+        }
+
+		Console.WriteLine("Enter a speaker name to find: ");
+		string? speakerToFind = Console.ReadLine();
+
+		if(speakerToFind != null)
+		{
+			using StreamWriter SpeakerLines = new StreamWriter(@"cod-hash-tool-data\SoundBanks\SpeakerLines.txt", true);
+
+			foreach (var file in SATSoundbanks)
+			{
+				string[] fileText = File.ReadAllLines(file);
+
+				foreach(string line in fileText)
+				{
+					if (line.Contains("\"snd\":"))
+					{
+						soundName = line.Substring(line.IndexOf("\"snd\": \"") + 8);
+						soundName = soundName.Replace("\",", "");
+					}
+
+					if (line.Contains("\"speaker\": \""))
+					{
+						speakerName = line.Substring(line.IndexOf("\"speaker\": \"") + 11);
+						speakerName = speakerName.Replace("\",", "");
+						speakerName = speakerName.Replace("\"", "");
+					}
+
+					if (line.Contains("\"content\": \""))
+					{
+						contentName = line.Substring(line.IndexOf("\"content\": \"") + 12);
+						contentName = contentName.Replace("\",", "");
+						contentName = contentName.Replace(" ","");
+						contentName = contentName.Replace("'","");
+						contentName = contentName.Replace(",","");
+						contentName = contentName.Replace("-","");
+						contentName = contentName.Replace(".","");
+						contentName = contentName.Replace("\"","");
+						contentName = contentName.Replace("?","");
+						contentName = contentName.Replace("”","");
+						contentName = contentName.Replace("“","");
+						contentName = contentName.Replace("’","");
+						contentName = contentName.Replace("!","");
+						contentName = contentName.Replace("‘","");
+						contentName = contentName.Replace("<","");
+						contentName = contentName.Replace(">","");
+						contentName = contentName.ToLower();
+
+						if(contentName.Length > 22)
+						{
+							contentName = contentName.Substring(0,21);
+						}
+
+						if (speakerName == speakerToFind)
+						{
+							lock(writeLock)
+							{
+								SpeakerLines.WriteLine(soundName + "|" + contentName);
+								Console.WriteLine(soundName + "|" + contentName);
+							}
+						}
+					}
+				}
+			}
+
+			SpeakerLines.Flush();
+			SpeakerLines.Close();
+		}
+	}
+
+	static void GrabSpeakerSounds()
+	{
+		string[] soundsToGrab = File.ReadAllLines(@"cod-hash-tool-data\SoundBanks\SpeakerLines.txt");
+
+		if(!Directory.Exists(@"cod-hash-tool-data\SoundBanks\Sounds"))
+		{
+			Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\Sounds");
+		}
+
+		if(!Directory.Exists(@"cod-hash-tool-data\SoundBanks\SpeakerSounds"))
+		{
+			Directory.CreateDirectory(@"cod-hash-tool-data\SoundBanks\SpeakerSounds");
+		}
+
+		foreach(string soundName in soundsToGrab)
+		{
+			string sound = soundName.Substring(0, soundName.IndexOf('|'));
+			string content = soundName.Substring(soundName.IndexOf('|') + 1);
+
+			if(File.Exists(@"cod-hash-tool-data\SoundBanks\Sounds\" + sound + ".wav"))
+			{
+				Console.WriteLine("Sound Found!");
+
+				if(!File.Exists(@"cod-hash-tool-data\SoundBanks\SpeakerSounds\" + content + ".wav"))
+				{
+					File.Copy(@"cod-hash-tool-data\SoundBanks\Sounds\" + sound + ".wav", @"cod-hash-tool-data\SoundBanks\SpeakerSounds\" + content + ".wav");
+				}
+				else
+				{
+					for(int i = 1; i < 10; i++)
+					{
+						if(!File.Exists(@"cod-hash-tool-data\SoundBanks\SpeakerSounds\" + content + "_" + i + ".wav"))
+						{
+							File.Copy(@"cod-hash-tool-data\SoundBanks\Sounds\" + sound + ".wav", @"cod-hash-tool-data\SoundBanks\SpeakerSounds\" + content + "_" + i + ".wav");
+
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	static void SoundGuesser()
     {
         Console.WriteLine("Enter a sound path up to the suffix to guess a sound name, type 'Quit' to exit:\n");
 
@@ -3026,6 +3529,75 @@ public class CODHashTool
         }
     }
 
+	static void SoundAliasGatherer()
+	{
+		Console.WriteLine("Gathering Sound Aliases: \n");
+
+		string[] IW9Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\IW9Soundbanks");
+		string[] JUPSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\JUPSoundbanks");
+		string[] T10Soundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\T10Soundbanks");
+		string[] SATSoundbanks = Directory.GetFiles(@"cod-hash-tool-data\SoundBanks\SATSoundbanks");
+		
+		SATSoundbanks = IW9Soundbanks.Union(SATSoundbanks).ToArray();
+		SATSoundbanks = JUPSoundbanks.Union(SATSoundbanks).ToArray();
+		SATSoundbanks = T10Soundbanks.Union(SATSoundbanks).ToArray();
+
+		string[] foundAliases = {""};
+		bool isUnique = false;
+
+		if(!File.Exists(@"cod-hash-tool-data\AssetLogs\SoundAliases.txt"))
+        {
+            var file = File.Create(@"cod-hash-tool-data\AssetLogs\SoundAliases.txt");
+            file.Close();
+        }
+
+		using StreamWriter GeneratedSoundAliases = new StreamWriter(@"cod-hash-tool-data\AssetLogs\SoundAliases.txt", true);
+
+		Parallel.ForEach(SATSoundbanks, soundbank =>
+		{
+			string[] lines = File.ReadAllLines(soundbank);
+
+			foreach(string line in lines)
+			{
+				if(line.Contains("null") || line.Contains("_plr") || line.Contains("_npc"))
+				{
+					continue;
+				}
+
+				if(line.Contains("\"alias\":") || line.Contains("\"alias2\""))
+				{
+					string alias = line.Substring(line.IndexOf(": ") + 3);
+					alias = alias.Replace("\",","");
+
+                    lock(writeLock)
+					{
+						isUnique = true;
+
+						foreach(string foundAlias in foundAliases)
+						{
+                            if(foundAlias == alias)
+                            {
+                                isUnique = false;
+								break;
+                            }
+                        }
+
+						if(isUnique)
+						{
+							GeneratedSoundAliases.WriteLine(alias);
+							Console.WriteLine(alias);
+
+							foundAliases = foundAliases.Append(alias).ToArray();
+						}
+					}
+				}
+			}
+		});
+
+		GeneratedSoundAliases.Flush();
+		GeneratedSoundAliases.Close();
+	}
+
 	static void AnimScanner()
 	{
 		Directory.CreateDirectory(@"cod-hash-tool-data\Animations\AnimScanner\AnimationsToScan");
@@ -3043,10 +3615,11 @@ public class CODHashTool
 				if(text.Contains(bone))
 				{
 					string animName = anim.Substring(anim.LastIndexOf('\\') + 1);
+					Console.WriteLine("Anim found");
 					
 					lock(writeLock)
 					{
-						if(File.Exists(anim))
+						if(File.Exists(anim) && !File.Exists(@"cod-hash-tool-data\Animations\AnimScanner\FoundAnimations\" + animName))
 						{
 							File.Copy(anim, @"cod-hash-tool-data\Animations\AnimScanner\FoundAnimations\" + animName);
 						}
@@ -3077,5 +3650,101 @@ public class CODHashTool
 				Console.Write(userInput + " | Current Bone = " + CalcHash64_v3(userInput) + "\n");
 			}
 		}
+	}
+
+	static void RemoveDuplicates()
+	{
+		Console.WriteLine("Removing Duplicates:\n\n");
+
+		string[] dictionaryOfLines = {""}; //Require blank array to union with the text to remove duplicates
+
+		if(!File.Exists(@"cod-hash-tool-data\Text Tools\WorkedText.txt"))
+		{
+			var file = File.Create(@"cod-hash-tool-data\Text Tools\WorkedText.txt");
+			file.Close();
+		}
+
+		string[] textToWorkOn = File.ReadAllLines(@"cod-hash-tool-data\Text Tools\TextToWork.txt");
+		string[] newText = File.ReadAllLines(@"cod-hash-tool-data\Text Tools\WorkedText.txt");
+
+		textToWorkOn = textToWorkOn.Union(dictionaryOfLines).ToArray();
+
+		using StreamWriter newTextStream = new StreamWriter(@"cod-hash-tool-data\Text Tools\WorkedText.txt", true);
+
+		foreach(string line in textToWorkOn)
+		{
+			newTextStream.WriteLine(line);
+		}
+
+		newTextStream.Flush();
+		newTextStream.Close();
+	}
+
+	static void RemoveLines()
+	{
+		if(!File.Exists(@"cod-hash-tool-data\Text Tools\WorkedText.txt"))
+		{
+			var file = File.Create(@"cod-hash-tool-data\Text Tools\WorkedText.txt");
+			file.Close();
+		}
+
+		string[] textToWorkOn = File.ReadAllLines(@"cod-hash-tool-data\Text Tools\TextToWork.txt");
+		string[] newText = File.ReadAllLines(@"cod-hash-tool-data\Text Tools\WorkedText.txt");
+
+		string? mode = "";
+		string? checkPhrase = "";
+
+		for(;;)
+		{
+			Console.WriteLine("Enter a string to check for: ");
+			checkPhrase = Console.ReadLine();
+
+			if(checkPhrase != null)
+			{
+				break;
+			}
+		}
+
+		for(;;)
+		{
+			Console.WriteLine("Remove lines that contain this phrase? Y for yes. N will remove lines not containing the phrase: ");
+			mode = Console.ReadLine();
+
+			if(mode != null)
+			{
+				mode = mode.ToUpper();
+
+				if(mode == "Y" || mode == "N")
+				{
+					break;
+				}
+			}
+		}
+
+		using StreamWriter newTextStream = new StreamWriter(@"cod-hash-tool-data\Text Tools\WorkedText.txt", true);
+
+		if(mode == "Y")
+		{
+			foreach(string line in textToWorkOn)
+			{
+				if(!line.Contains(checkPhrase))
+				{
+					newTextStream.WriteLine(line);
+				}
+			}
+		}
+		else if(mode == "N")
+		{
+			foreach(string line in textToWorkOn)
+			{
+				if(line.Contains(checkPhrase))
+				{
+					newTextStream.WriteLine(line);
+				}
+			}
+		}
+
+		newTextStream.Flush();
+		newTextStream.Close();
 	}
 }
